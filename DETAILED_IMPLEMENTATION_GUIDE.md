@@ -296,6 +296,632 @@ ws.onmessage = (event) => {
 
 ---
 
+## Modular Architecture & Upgrade Strategy
+
+### Overview
+
+CF-Better-Auth implements a sophisticated modular architecture that enables building on top of better-auth while maintaining complete independence for upgrades. This architecture ensures zero breaking changes when updating the upstream better-auth repository.
+
+### Core Architecture Principles
+
+#### 1. Separation of Concerns
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Architecture Layers                    │
+├─────────────────────────────────────────────────────────┤
+│ Custom Layer     │ Your business logic & customizations │
+│ Adapter Layer    │ Interfaces and compatibility         │
+│ Core Layer       │ Better-auth (untouched submodule)    │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 2. Git Submodule Strategy
+
+```bash
+# Initial setup
+git submodule add https://github.com/better-auth/better-auth.git better-auth
+git submodule init
+git submodule update
+
+# Version management
+cd better-auth
+git checkout v2.0.0  # Lock to specific version
+cd ..
+git add better-auth
+git commit -m "Lock better-auth to v2.0.0"
+```
+
+### Adapter Layer Implementation
+
+#### Core Adapter Pattern
+
+```typescript
+// packages/@cf-auth/core/src/auth-adapter.ts
+import { betterAuth as CoreBetterAuth } from '../../../better-auth/src';
+import type { 
+  BetterAuthOptions, 
+  BetterAuthReturn 
+} from '../../../better-auth/src/types';
+
+export class CFBetterAuthAdapter {
+  private core: BetterAuthReturn;
+  private customPlugins: Map<string, CFPlugin>;
+  private configOverrides: Partial<BetterAuthOptions>;
+  
+  constructor(options: CFAuthOptions) {
+    // Validate and merge configurations
+    const config = this.mergeConfigurations(options);
+    
+    // Initialize core with merged config
+    this.core = CoreBetterAuth(config);
+    
+    // Apply custom enhancements
+    this.enhanceCore();
+  }
+  
+  private mergeConfigurations(options: CFAuthOptions): BetterAuthOptions {
+    return {
+      ...this.getDefaultConfig(),
+      ...this.mapCFOptionsToBetterAuth(options),
+      ...this.configOverrides,
+      plugins: this.mergePlugins(options.plugins)
+    };
+  }
+  
+  private enhanceCore(): void {
+    // Add custom middleware
+    this.core.use(this.customMiddleware);
+    
+    // Wrap core methods
+    this.wrapCoreMethods();
+    
+    // Add custom methods
+    this.addCustomMethods();
+  }
+  
+  // Wrapped methods maintain compatibility
+  async signIn(...args: Parameters<typeof this.core.signIn>) {
+    // Pre-processing hooks
+    await this.hooks.beforeSignIn?.(args);
+    
+    // Call core method
+    const result = await this.core.signIn(...args);
+    
+    // Post-processing hooks
+    await this.hooks.afterSignIn?.(result);
+    
+    return result;
+  }
+  
+  // CF-specific methods
+  async cfCustomMethod(params: CFCustomParams) {
+    // Implementation specific to CF-Better-Auth
+    return this.customLogic(params);
+  }
+}
+```
+
+#### Plugin Manager
+
+```typescript
+// packages/@cf-auth/core/src/plugin-manager.ts
+export class PluginManager {
+  private corePlugins: Map<string, BetterAuthPlugin>;
+  private customPlugins: Map<string, CFPlugin>;
+  private pluginDependencies: Map<string, string[]>;
+  
+  constructor() {
+    this.loadCorePlugins();
+    this.loadCustomPlugins();
+    this.resolveDependencies();
+  }
+  
+  // Merge CF plugins with better-auth plugins
+  mergePlugins(cfPlugins: CFPlugin[]): BetterAuthPlugin[] {
+    const merged: BetterAuthPlugin[] = [];
+    
+    for (const cfPlugin of cfPlugins) {
+      if (cfPlugin.extends) {
+        // Extend existing better-auth plugin
+        const corePlugin = this.corePlugins.get(cfPlugin.extends);
+        merged.push(this.extendPlugin(corePlugin, cfPlugin));
+      } else if (cfPlugin.replaces) {
+        // Replace better-auth plugin
+        merged.push(this.adaptPlugin(cfPlugin));
+      } else {
+        // Add as new plugin
+        merged.push(this.wrapPlugin(cfPlugin));
+      }
+    }
+    
+    return merged;
+  }
+  
+  private extendPlugin(
+    core: BetterAuthPlugin, 
+    custom: CFPlugin
+  ): BetterAuthPlugin {
+    return {
+      ...core,
+      ...custom,
+      hooks: this.mergeHooks(core.hooks, custom.hooks),
+      endpoints: { ...core.endpoints, ...custom.endpoints }
+    };
+  }
+}
+```
+
+#### Configuration Merger
+
+```typescript
+// packages/@cf-auth/core/src/config-merger.ts
+export class ConfigurationMerger {
+  private readonly configSchema = z.object({
+    // Schema definition for validation
+  });
+  
+  merge(
+    base: BetterAuthOptions,
+    custom: CFAuthOptions,
+    overrides?: Partial<BetterAuthOptions>
+  ): BetterAuthOptions {
+    // Validate configurations
+    this.validate(custom);
+    
+    // Deep merge with conflict resolution
+    const merged = this.deepMerge(base, this.transform(custom));
+    
+    // Apply overrides
+    if (overrides) {
+      return this.applyOverrides(merged, overrides);
+    }
+    
+    return merged;
+  }
+  
+  private transform(cfOptions: CFAuthOptions): Partial<BetterAuthOptions> {
+    // Transform CF-specific options to better-auth format
+    return {
+      appName: cfOptions.applicationName,
+      database: this.transformDatabase(cfOptions.database),
+      emailAndPassword: {
+        enabled: cfOptions.features?.emailAuth ?? true,
+        requireEmailVerification: cfOptions.security?.requireEmailVerification
+      },
+      // ... more transformations
+    };
+  }
+  
+  private handleConflicts(key: string, baseValue: any, customValue: any): any {
+    // Define conflict resolution strategy
+    const strategy = this.conflictStrategies.get(key) || 'custom-wins';
+    
+    switch (strategy) {
+      case 'base-wins':
+        return baseValue;
+      case 'custom-wins':
+        return customValue;
+      case 'merge':
+        return this.mergeValues(baseValue, customValue);
+      default:
+        return customValue;
+    }
+  }
+}
+```
+
+### Upgrade Process
+
+#### Automated Upgrade Script
+
+```bash
+#!/bin/bash
+# scripts/upgrade-better-auth.sh
+
+set -e
+
+echo "🚀 Starting better-auth upgrade process..."
+
+# Save current version
+CURRENT_VERSION=$(cd better-auth && git describe --tags)
+echo "Current version: $CURRENT_VERSION"
+
+# Fetch latest changes
+cd better-auth
+git fetch --tags
+
+# Get latest stable version
+LATEST_VERSION=$(git describe --tags `git rev-list --tags --max-count=1`)
+echo "Latest version: $LATEST_VERSION"
+
+# Check if upgrade needed
+if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+  echo "✅ Already on latest version"
+  exit 0
+fi
+
+# Create backup branch
+git checkout -b "backup-$CURRENT_VERSION"
+git checkout main
+
+# Upgrade to latest
+echo "📦 Upgrading to $LATEST_VERSION..."
+git checkout "$LATEST_VERSION"
+
+# Go back to root
+cd ..
+
+# Run compatibility check
+echo "🔍 Checking compatibility..."
+npm run check:compatibility
+
+if [ $? -ne 0 ]; then
+  echo "❌ Compatibility issues detected"
+  echo "Rolling back to $CURRENT_VERSION..."
+  cd better-auth
+  git checkout "$CURRENT_VERSION"
+  cd ..
+  exit 1
+fi
+
+# Update adapters if needed
+echo "🔧 Updating adapters..."
+npm run generate:adapters
+
+# Run tests
+echo "🧪 Running test suite..."
+npm test
+
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed"
+  echo "Rolling back to $CURRENT_VERSION..."
+  cd better-auth
+  git checkout "$CURRENT_VERSION"
+  cd ..
+  exit 1
+fi
+
+# Commit changes
+git add better-auth
+git commit -m "chore: upgrade better-auth from $CURRENT_VERSION to $LATEST_VERSION"
+
+echo "✅ Successfully upgraded better-auth to $LATEST_VERSION"
+```
+
+#### Compatibility Checker
+
+```javascript
+// scripts/check-compatibility.js
+const fs = require('fs');
+const path = require('path');
+const semver = require('semver');
+
+class CompatibilityChecker {
+  constructor() {
+    this.breakingChanges = this.loadBreakingChanges();
+    this.adapterVersion = this.getAdapterVersion();
+    this.betterAuthVersion = this.getBetterAuthVersion();
+  }
+  
+  async check() {
+    console.log('Checking compatibility...');
+    
+    const issues = [];
+    
+    // Check version compatibility
+    if (!this.isVersionCompatible()) {
+      issues.push({
+        type: 'version',
+        message: `Adapter v${this.adapterVersion} may not be compatible with better-auth v${this.betterAuthVersion}`
+      });
+    }
+    
+    // Check for breaking changes
+    const breakingChanges = this.detectBreakingChanges();
+    if (breakingChanges.length > 0) {
+      issues.push(...breakingChanges);
+    }
+    
+    // Check API compatibility
+    const apiIssues = await this.checkAPICompatibility();
+    if (apiIssues.length > 0) {
+      issues.push(...apiIssues);
+    }
+    
+    // Report results
+    if (issues.length > 0) {
+      console.error('❌ Compatibility issues found:');
+      issues.forEach(issue => {
+        console.error(`  - ${issue.type}: ${issue.message}`);
+      });
+      return false;
+    }
+    
+    console.log('✅ No compatibility issues found');
+    return true;
+  }
+  
+  detectBreakingChanges() {
+    const issues = [];
+    
+    for (const change of this.breakingChanges) {
+      if (semver.gte(this.betterAuthVersion, change.version)) {
+        // Check if adapter handles this breaking change
+        if (!this.isBreakingChangeHandled(change)) {
+          issues.push({
+            type: 'breaking-change',
+            message: change.description,
+            migration: change.migration
+          });
+        }
+      }
+    }
+    
+    return issues;
+  }
+  
+  async checkAPICompatibility() {
+    const issues = [];
+    
+    // Load API definitions
+    const coreAPI = await this.loadCoreAPI();
+    const adapterAPI = await this.loadAdapterAPI();
+    
+    // Check method signatures
+    for (const [method, signature] of Object.entries(coreAPI)) {
+      if (!adapterAPI[method]) {
+        issues.push({
+          type: 'missing-method',
+          message: `Adapter missing method: ${method}`
+        });
+      } else if (!this.signaturesMatch(signature, adapterAPI[method])) {
+        issues.push({
+          type: 'signature-mismatch',
+          message: `Method signature mismatch: ${method}`
+        });
+      }
+    }
+    
+    return issues;
+  }
+}
+
+// Run compatibility check
+const checker = new CompatibilityChecker();
+checker.check().then(success => {
+  process.exit(success ? 0 : 1);
+});
+```
+
+### Version Management
+
+#### Compatibility Matrix
+
+```typescript
+// packages/@cf-auth/core/src/compatibility.ts
+export const COMPATIBILITY_MATRIX = {
+  '1.0.0': {
+    minBetterAuthVersion: '1.0.0',
+    maxBetterAuthVersion: '1.5.0',
+    breakingChanges: [],
+    migrations: []
+  },
+  '1.1.0': {
+    minBetterAuthVersion: '1.5.0',
+    maxBetterAuthVersion: '2.0.0',
+    breakingChanges: [
+      {
+        version: '1.5.0',
+        description: 'Session API changed',
+        migration: 'migrate-session-api-v1.5.0.ts'
+      }
+    ],
+    migrations: ['1.0.0-to-1.1.0.ts']
+  },
+  '2.0.0': {
+    minBetterAuthVersion: '2.0.0',
+    maxBetterAuthVersion: '3.0.0',
+    breakingChanges: [
+      {
+        version: '2.0.0',
+        description: 'Plugin API redesigned',
+        migration: 'migrate-plugin-api-v2.0.0.ts'
+      }
+    ],
+    migrations: ['1.1.0-to-2.0.0.ts']
+  }
+};
+```
+
+### Custom Extensions
+
+#### Custom Plugin Development
+
+```typescript
+// extensions/plugins/cf-custom-auth/index.ts
+import type { CFAuthPlugin } from '@cf-auth/core';
+
+export const cfCustomAuthPlugin: CFAuthPlugin = {
+  id: 'cf-custom-auth',
+  name: 'CF Custom Authentication',
+  version: '1.0.0',
+  
+  // Specify relationship to better-auth plugins
+  extends: 'emailPassword',  // Extend existing plugin
+  // OR
+  replaces: 'emailPassword',  // Replace existing plugin
+  // OR
+  // standalone: true,        // New independent plugin
+  
+  // Plugin implementation
+  async onInit(auth) {
+    // Initialization logic
+    console.log('CF Custom Auth Plugin initialized');
+  },
+  
+  // Custom endpoints
+  endpoints: {
+    '/cf-auth/custom': {
+      method: 'POST',
+      handler: async (req, res) => {
+        // Custom endpoint logic
+      }
+    }
+  },
+  
+  // Lifecycle hooks
+  hooks: {
+    beforeSignIn: async (data) => {
+      // Custom pre-sign-in logic
+      console.log('CF: Before sign in', data);
+    },
+    afterSignIn: async (session) => {
+      // Custom post-sign-in logic
+      console.log('CF: After sign in', session);
+    },
+    beforeSignUp: async (data) => {
+      // Custom validation
+      if (data.email.endsWith('@blocked.com')) {
+        throw new Error('Email domain not allowed');
+      }
+    }
+  },
+  
+  // Database schema extensions
+  schema: {
+    users: {
+      cfCustomField: {
+        type: 'string',
+        nullable: true
+      }
+    }
+  }
+};
+```
+
+### Benefits of Modular Architecture
+
+1. **Zero Breaking Changes**: Updates to better-auth never break your customizations
+2. **Version Control**: Lock to specific versions with controlled upgrades
+3. **Clean Separation**: Custom code completely isolated from core
+4. **Easy Rollback**: Simple version rollback if issues arise
+5. **Parallel Development**: Work on customizations while better-auth evolves
+6. **Type Safety**: Full TypeScript support with proper type inference
+7. **Testing Isolation**: Test your code independently of better-auth
+
+### Import Path Mapping
+
+All imports from better-auth should be mapped through our adapter layer to maintain modularity:
+
+#### Import Mapping Table
+
+| Original Import | Adapter Import |
+|----------------|----------------|
+| `better-auth` | `@cf-auth/core` |
+| `better-auth/react` | `@cf-auth/client` |
+| `better-auth/plugins` | `@cf-auth/plugins` |
+| `better-auth/plugins/*` | `@cf-auth/plugins/*` |
+| `better-auth/adapters/drizzle` | `@cf-auth/core/adapters/drizzle` |
+| `better-auth/adapters/*` | `@cf-auth/core/adapters/*` |
+| `better-auth/client` | `@cf-auth/client` |
+| `better-auth/types` | `@cf-auth/core/types` |
+
+#### TypeScript Path Configuration
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "paths": {
+      "@cf-auth/core": ["./packages/@cf-auth/core/src"],
+      "@cf-auth/core/*": ["./packages/@cf-auth/core/src/*"],
+      "@cf-auth/client": ["./packages/@cf-auth/client/src"],
+      "@cf-auth/client/*": ["./packages/@cf-auth/client/src/*"],
+      "@cf-auth/plugins": ["./packages/@cf-auth/plugins/src"],
+      "@cf-auth/plugins/*": ["./packages/@cf-auth/plugins/src/*"]
+    }
+  }
+}
+```
+
+#### Workspace Configuration
+
+```json
+// package.json (root)
+{
+  "name": "cf-better-auth",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/@cf-auth/*",
+      "apps/*",
+      "extensions/*",
+      "better-auth"
+    ],
+    "nohoist": [
+      "**/better-auth",
+      "**/better-auth/**"
+    ]
+  },
+  "scripts": {
+    "build:adapters": "npm run build --workspace=packages/@cf-auth/core --workspace=packages/@cf-auth/client --workspace=packages/@cf-auth/plugins",
+    "test:adapters": "npm run test --workspace=packages/@cf-auth/core --workspace=packages/@cf-auth/client",
+    "upgrade:check": "node scripts/check-compatibility.js",
+    "upgrade:better-auth": "./scripts/upgrade-better-auth.sh"
+  }
+}
+```
+
+### Adapter Testing Strategy
+
+#### Testing Requirements
+
+1. **Unit Tests for Adapters**
+   ```typescript
+   // packages/@cf-auth/core/src/__tests__/adapter.test.ts
+   describe('CFBetterAuthAdapter', () => {
+     it('should wrap all core methods', () => {
+       const adapter = new CFBetterAuthAdapter({});
+       expect(adapter.signIn).toBeDefined();
+       expect(adapter.signUp).toBeDefined();
+       expect(adapter.signOut).toBeDefined();
+     });
+     
+     it('should maintain type safety', () => {
+       // Type tests
+     });
+   });
+   ```
+
+2. **Compatibility Tests**
+   ```typescript
+   // packages/@cf-auth/core/src/__tests__/compatibility.test.ts
+   describe('Better-Auth Compatibility', () => {
+     it('should be compatible with current better-auth version', async () => {
+       const checker = new CompatibilityChecker();
+       const result = await checker.check();
+       expect(result).toBe(true);
+     });
+   });
+   ```
+
+3. **Upgrade Simulation Tests**
+   ```typescript
+   // scripts/__tests__/upgrade.test.ts
+   describe('Upgrade Process', () => {
+     it('should successfully upgrade when compatible', async () => {
+       // Simulate upgrade
+     });
+     
+     it('should rollback when incompatible', async () => {
+       // Simulate failed upgrade
+     });
+   });
+   ```
+
+---
+
 ## White-Labeling & Customization Architecture
 
 ### 3.1 Complete Customization Strategy

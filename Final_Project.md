@@ -112,6 +112,126 @@ This is YOUR authentication system, not a third-party service.
 └────────────────┘ └────────────┘ └─────────────────┘
 ```
 
+### Modular Architecture for Better-Auth Integration
+
+CF-Better-Auth implements a sophisticated modular architecture that allows it to build on top of better-auth while maintaining complete upgrade independence. This architecture ensures that updates to the upstream better-auth repository never break your customizations.
+
+#### Layer Separation Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│          CF-Better-Auth Custom Layer                    │
+│  (Your customizations, plugins, and configurations)     │
+├─────────────────────────────────────────────────────────┤
+│           Abstraction/Adapter Layer                     │
+│  (Interfaces, wrappers, and compatibility layer)        │
+├─────────────────────────────────────────────────────────┤
+│         Better-Auth Core (Git Submodule)                │
+│  (Original better-auth - never modified directly)       │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Core Architecture Principles
+
+1. **Never Modify Core**: Better-auth core remains untouched as a Git submodule
+2. **Extend Through Adapters**: All customizations go through adapter interfaces
+3. **Version Independence**: Lock to specific better-auth versions with controlled upgrades
+4. **Backward Compatibility**: Adapter layer maintains compatibility during upgrades
+
+#### Adapter Pattern Implementation
+
+```typescript
+// packages/@cf-auth/core/src/auth-adapter.ts
+import { betterAuth as CoreBetterAuth } from '../../../better-auth/src';
+import type { BetterAuthOptions } from '../../../better-auth/src/types';
+import { ConfigMerger } from './config-merger';
+import { PluginManager } from './plugin-manager';
+
+export class CFBetterAuth {
+  private core: ReturnType<typeof CoreBetterAuth>;
+  private configMerger: ConfigMerger;
+  private pluginManager: PluginManager;
+  
+  constructor(options: CFAuthOptions) {
+    // Merge configurations safely
+    const mergedConfig = this.configMerger.merge(
+      this.getDefaultConfig(),
+      options,
+      this.getCustomExtensions()
+    );
+    
+    // Initialize core with merged config
+    this.core = CoreBetterAuth(mergedConfig);
+    
+    // Apply custom middleware and hooks
+    this.applyCustomizations();
+  }
+  
+  // Wrap core methods with custom logic
+  async signIn(...args: Parameters<typeof this.core.signIn>) {
+    // Pre-processing
+    await this.beforeSignIn(args);
+    
+    // Call core method
+    const result = await this.core.signIn(...args);
+    
+    // Post-processing
+    await this.afterSignIn(result);
+    
+    return result;
+  }
+  
+  // Add CF-specific methods
+  async customMethod() {
+    // Implementation specific to CF-Better-Auth
+  }
+}
+```
+
+#### Custom Plugin System
+
+```typescript
+// extensions/plugins/custom-plugin/index.ts
+import type { CFAuthPlugin } from '@cf-auth/core';
+
+export const customPlugin: CFAuthPlugin = {
+  id: 'cf-custom-plugin',
+  name: 'Custom CF Plugin',
+  
+  // Extend better-auth plugin interface
+  extends: 'better-auth-plugin-interface',
+  
+  // Custom implementation
+  async onInit(auth) {
+    // Plugin initialization
+  },
+  
+  // Override or extend core plugin behavior
+  hooks: {
+    beforeSignIn: async (data) => {
+      // Custom pre-sign-in logic
+    },
+    afterSignIn: async (session) => {
+      // Custom post-sign-in logic
+    }
+  }
+};
+```
+
+#### Upgrade Strategy
+
+```bash
+# Upgrade better-auth to latest compatible version
+npm run upgrade:better-auth
+
+# This script:
+# 1. Updates the Git submodule
+# 2. Runs compatibility checks
+# 3. Updates adapter interfaces if needed
+# 4. Runs comprehensive test suite
+# 5. Generates upgrade report
+```
+
 ### Dual-Plugin Architecture System
 
 The authentication system implements a sophisticated dual-plugin system that ensures type safety and modularity:
@@ -157,10 +277,53 @@ graph TD
     A --> L[Magic Links]
 ```
 
-### Monorepo Directory Structure
+### Modular Project Structure
 
 ```
-auth-solution/
+CF-Better-Auth/
+├── better-auth/                 # Git submodule (upstream better-auth)
+│   └── [Original better-auth structure - untouched]
+├── extensions/                  # CF-Better-Auth customizations
+│   ├── plugins/                # Custom plugins
+│   │   ├── cf-multi-tenant/   # CF-specific multi-tenancy
+│   │   ├── cf-analytics/      # Custom analytics
+│   │   └── cf-compliance/     # Compliance features
+│   ├── components/             # Custom UI components
+│   │   ├── branded-login/     # Branded authentication
+│   │   └── dashboard-widgets/ # Custom dashboard
+│   ├── config/                 # Configuration overrides
+│   │   ├── base.config.ts     # Base configuration
+│   │   ├── plugins.config.ts  # Plugin configurations
+│   │   └── overrides.config.ts # Better-auth overrides
+│   ├── middleware/             # Custom middleware
+│   └── adapters/               # Better-auth adapters
+├── packages/                    # Workspace packages
+│   ├── @cf-auth/core/         # Core adapter package
+│   │   ├── src/
+│   │   │   ├── auth-adapter.ts    # Main adapter
+│   │   │   ├── plugin-manager.ts  # Plugin management
+│   │   │   ├── config-merger.ts   # Config merging
+│   │   │   └── types.ts          # Extended types
+│   │   └── package.json
+│   ├── @cf-auth/ui/           # UI extensions
+│   │   ├── src/
+│   │   │   ├── components/   # UI components
+│   │   │   └── themes/       # Theme system
+│   │   └── package.json
+│   └── @cf-auth/plugins/      # Plugin extensions
+│       ├── src/
+│       │   └── index.ts      # Plugin exports
+│       └── package.json
+├── apps/                        # Applications
+│   ├── dashboard/              # Management dashboard
+│   └── example/                # Example implementation
+├── scripts/                     # Automation scripts
+│   ├── upgrade-better-auth.sh # Upgrade script
+│   ├── check-compatibility.js # Compatibility checker
+│   ├── sync-config.js         # Config synchronization
+│   └── generate-adapters.js   # Adapter generation
+└── auth-solution/              # Original structure
+    ├── .github/                # GitHub configuration
 ├── .github/                      # GitHub configuration
 │   ├── workflows/               # CI/CD workflows
 │   └── ISSUE_TEMPLATE/         # Issue templates
@@ -314,16 +477,56 @@ git clone https://github.com/your-org/auth-starter.git .
 rm -rf .git
 
 # Add better-auth as Git submodule for version control
-git submodule add https://github.com/better-auth/better-auth.git lib/better-auth-core
+git submodule add https://github.com/better-auth/better-auth.git better-auth
 git submodule update --init --recursive
+
+# Lock to specific version for stability
+cd better-auth
+git checkout v2.0.0  # Or your desired version
+cd ..
+
+# Create the modular structure
+mkdir -p extensions/{plugins,components,config,middleware,adapters}
+mkdir -p packages/@cf-auth/{core,ui,plugins}/src
+mkdir -p scripts apps/{dashboard,example}
+
+# Initialize workspaces
+cat > package.json << 'EOF'
+{
+  "name": "cf-better-auth",
+  "private": true,
+  "workspaces": [
+    "packages/@cf-auth/*",
+    "apps/*",
+    "extensions/*"
+  ],
+  "scripts": {
+    "upgrade:better-auth": "./scripts/upgrade-better-auth.sh",
+    "check:compatibility": "node scripts/check-compatibility.js",
+    "sync:config": "node scripts/sync-config.js",
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  }
+}
+EOF
+
+# Create adapter package
+cd packages/@cf-auth/core
+npm init -y
+npm install --save-peer ../../../better-auth
 
 # Install dependencies
 npm install
 
-# Install additional required packages
-npm install better-auth @better-auth/cli
+# Install core dependencies (better-auth is managed as submodule)
 npm install drizzle-orm pg @types/pg
 npm install @sendgrid/mail twilio redis ioredis
+
+# Build and link local adapter packages
+cd packages/@cf-auth/core && npm install && npm run build && cd ../../..
+cd packages/@cf-auth/client && npm install && npm run build && cd ../../..
+cd packages/@cf-auth/plugins && npm install && npm run build && cd ../../..
 npm install zod dotenv cors helmet morgan
 npm install @opentelemetry/sdk-metrics-base @opentelemetry/exporter-prometheus
 
@@ -354,8 +557,10 @@ npx shadcn-ui@latest add table scroll-area separator sheet navigation-menu
 # Install Aceternity UI components (custom components)
 # Note: These would be custom implementations in your components folder
 
-# Install additional dependencies
-npm install better-auth framer-motion clsx tailwind-merge
+# Install additional dependencies (using local adapters)
+npm install framer-motion clsx tailwind-merge
+# Link to local adapter packages
+npm install @cf-auth/client @cf-auth/core
 npm install @tanstack/react-query axios react-hook-form @hookform/resolvers
 npm install lucide-react next-themes zustand @radix-ui/react-icons
 npm install recharts react-intersection-observer react-hot-toast
@@ -704,8 +909,8 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 
 ```typescript
 // server/src/lib/auth.ts
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { CFBetterAuth } from "@cf-auth/core";
+import { drizzleAdapter } from "@cf-auth/core/adapters";
 import { db } from "./db";
 import {
   admin,
@@ -726,13 +931,13 @@ import {
   genericOAuth,
   rateLimit,
   audit
-} from "better-auth/plugins";
+} from "@cf-auth/plugins";
 import { sendEmail } from "./email";
 import { sendSMS } from "./sms";
 import { redis } from "./redis";
 import { trackEvent } from "./analytics";
 
-export const auth = betterAuth({
+export const auth = new CFBetterAuth({
   // Core Configuration
   appName: process.env.APP_NAME || "Your Auth System",
   database: drizzleAdapter(db, { 
@@ -1212,7 +1417,7 @@ export type Auth = typeof auth;
 
 ```typescript
 // frontend/src/lib/authClient.ts
-import { createAuthClient } from "better-auth/react";
+import { createAuthClient } from "@cf-auth/client";
 import type { Auth } from "@/../../server/src/lib/auth";
 
 export const authClient = createAuthClient<Auth>({
@@ -2016,7 +2221,7 @@ export function ActivityFeed() {
 
 ```typescript
 // lib/auth/passkey-config.ts
-import { passkey } from "better-auth/plugins/passkey";
+import { passkey } from "@cf-auth/plugins/passkey";
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";
 
 export const passkeyConfig = {
@@ -3648,7 +3853,7 @@ export class PerformanceMonitor {
 
 ```typescript
 // migration/nextauth-to-better-auth.ts
-import { BetterAuth } from "better-auth";
+import { CFBetterAuth } from "@cf-auth/core";
 import { NextAuthConfig, NextAuthUser, NextAuthSession } from "next-auth";
 
 export class NextAuthMigrator {
@@ -3751,7 +3956,8 @@ echo "🚀 Starting migration to modern auth system..."
 pg_dump $DATABASE_URL > "backup_$(date +%Y%m%d_%H%M%S).sql"
 
 # Install authentication dependencies
-npm install better-auth @better-auth/drizzle
+# Use local adapter packages instead
+npm install @cf-auth/core @cf-auth/plugins
 
 # Run database migration
 npx tsx scripts/migrate-database.ts
@@ -3960,7 +4166,7 @@ export const phoneNumberPlugin = phoneNumber({
 
 ```typescript
 // lib/auth/plugins/organization.ts
-import { organization, admin, multiSession } from "better-auth/plugins";
+import { organization, admin, multiSession } from "@cf-auth/plugins";
 
 export const organizationPlugin = organization({
   // Organization creation settings
@@ -4111,7 +4317,7 @@ export const multiSessionPlugin = multiSession({
 
 ```typescript
 // lib/auth/plugins/security.ts
-import { apiKey, bearer, jwt, rateLimit } from "better-auth/plugins";
+import { apiKey, bearer, jwt, rateLimit } from "@cf-auth/plugins";
 
 // API Key Plugin
 export const apiKeyPlugin = apiKey({
@@ -4216,7 +4422,7 @@ export const rateLimitPlugin = rateLimit({
 
 ```typescript
 // lib/auth/plugins/integrations.ts
-import { oidcProvider, genericOAuth, openAPI, customSession } from "better-auth/plugins";
+import { oidcProvider, genericOAuth, openAPI, customSession } from "@cf-auth/plugins";
 
 // OpenID Connect Provider
 export const oidcProviderPlugin = oidcProvider({
@@ -5193,7 +5399,7 @@ interface ListUsersResponse {
 
 ```typescript
 // Better-Auth SDK Usage Examples
-import { createAuthClient } from 'better-auth/client';
+import { createAuthClient } from '@cf-auth/client';
 
 const authClient = createAuthClient({
   baseURL: 'http://localhost:3000',
@@ -7913,7 +8119,7 @@ Better-Auth provides comprehensive mobile app integration with native SDKs for R
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import TouchID from 'react-native-touch-id';
-import { betterAuth } from 'better-auth/client';
+import { CFBetterAuth } from '@cf-auth/client';
 
 export const authClient = betterAuth({
   baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
@@ -7973,7 +8179,7 @@ export class SecureTokenStorage {
 // hooks/useAuth.ts
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { authClient, SecureTokenStorage } from '@/lib/better-auth/react-native';
+import { authClient, SecureTokenStorage } from '@cf-auth/client/react-native';
 
 interface User {
   id: string;
@@ -8138,7 +8344,7 @@ export const isProduction = env.NODE_ENV === 'production';
 
 ```typescript
 // lib/config/auth.advanced.ts
-import { betterAuth } from 'better-auth';
+import { CFBetterAuth } from '@cf-auth/core';
 import { env, isProduction } from './environment';
 
 export const advancedAuthConfig = betterAuth({

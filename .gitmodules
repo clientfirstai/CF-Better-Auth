@@ -1,0 +1,4 @@
+[submodule "vendor/better-auth"]
+	path = vendor/better-auth
+	url = https://github.com/better-auth/better-auth.git
+	branch = main
