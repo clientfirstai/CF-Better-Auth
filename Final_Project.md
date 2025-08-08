@@ -1,4 +1,4 @@
-# Better-Auth Complete Enterprise Implementation Guide & Technical Documentation
+# Complete Enterprise Authentication System - Implementation Guide & Technical Documentation
 
 ## Table of Contents
 
@@ -31,12 +31,21 @@
 
 ## Executive Overview
 
-This is a **comprehensive, framework-agnostic authentication and authorization system** for TypeScript, designed as a powerful self-hosted open-source solution for any SaaS product. This documentation provides a complete guide for deploying your own production-ready authentication platform that combines enterprise-grade security with developer-friendly APIs, complete customization, and stunning UI components. The system is fully configurable through environment variables, allowing you to brand it as your own.
+This is a **comprehensive, framework-agnostic authentication and authorization system** for TypeScript, designed as a powerful self-hosted open-source solution for any SaaS product. This documentation provides a complete guide for deploying your own production-ready authentication platform that combines enterprise-grade security with developer-friendly APIs, complete customization, and stunning UI components. 
+
+**Key Feature: Complete White-Labeling** - The entire system is fully configurable through environment variables, allowing you to:
+- Set your own application name (`APP_NAME`)
+- Configure custom logos and branding (`APP_LOGO_URL`)
+- Define your color scheme (`APP_PRIMARY_COLOR`)
+- Customize all user-facing text and descriptions
+- Deploy under your own domain with full branding control
+
+This is YOUR authentication system, not a third-party service.
 
 ### Key Differentiators
 
-| Feature | This System | Commercial Alternatives |
-|---------|------------|------------------------|
+| Feature | This Open-Source System | Commercial Alternatives |
+|---------|------------------------|------------------------|
 | **Cost** | ✅ Free Forever | ❌ Monthly fees per user |
 | **Self-Hosting** | ✅ Full Control | ❌ Limited or cloud-only |
 | **Customization** | ✅ Complete (code, UI, features) | ❌ Limited customization |
@@ -46,9 +55,10 @@ This is a **comprehensive, framework-agnostic authentication and authorization s
 | **Data Sovereignty** | ✅ Complete | ❌ Limited |
 | **Passkeys/WebAuthn** | ✅ Full Support | Often enterprise only |
 | **Feature Toggle** | ✅ Runtime configuration | ❌ Usually static |
-| **White-labeling** | ✅ Full branding control | ❌ Limited or paid |
+| **White-labeling** | ✅ 100% Your Brand | ❌ Limited or paid |
+| **Open Source** | ✅ MIT License | ❌ Proprietary |
 
-### When to Use Better-Auth
+### When to Use This Authentication System
 
 **Ideal for:**
 - Projects requiring full control over authentication logic
@@ -88,7 +98,7 @@ This is a **comprehensive, framework-agnostic authentication and authorization s
 ┌────▼─────┐        ┌────▼─────┐        ┌────▼─────┐
 │ NextJS   │        │ NextJS   │        │ NextJS   │
 │Instance 1│        │Instance 2│        │Instance 3│
-│+ Better  │        │+ Better  │        │+ Better  │
+│+ Custom  │        │+ Custom  │        │+ Custom  │
 │  Auth    │        │  Auth    │        │  Auth    │
 └────┬─────┘        └────┬─────┘        └────┬─────┘
      │                    │                    │
@@ -104,7 +114,7 @@ This is a **comprehensive, framework-agnostic authentication and authorization s
 
 ### Dual-Plugin Architecture System
 
-Better-Auth implements a sophisticated dual-plugin system that ensures type safety and modularity:
+The authentication system implements a sophisticated dual-plugin system that ensures type safety and modularity:
 
 #### Server Plugin Interface
 
@@ -150,7 +160,7 @@ graph TD
 ### Monorepo Directory Structure
 
 ```
-better-auth-solution/
+auth-solution/
 ├── .github/                      # GitHub configuration
 │   ├── workflows/               # CI/CD workflows
 │   └── ISSUE_TEMPLATE/         # Issue templates
@@ -166,13 +176,13 @@ better-auth-solution/
 ├── server/                      # Backend application
 │   ├── src/
 │   │   ├── lib/
-│   │   │   ├── auth.ts        # Better-Auth configuration
+│   │   │   ├── auth.ts        # Authentication configuration
 │   │   │   ├── db.ts          # Database connection
 │   │   │   └── email.ts       # Email service
 │   │   ├── middleware/        # Custom middlewares
 │   │   └── index.ts           # Server entry point
 │   ├── lib/
-│   │   └── better-auth-core/  # Git submodule
+│   │   └── auth-core/         # Git submodule
 │   ├── .env                   # Environment variables
 │   ├── .env.example           # Example environment
 │   └── package.json           # Server dependencies
@@ -188,7 +198,7 @@ better-auth-solution/
 │   │   │   │   ├── settings/
 │   │   │   │   └── admin/
 │   │   │   ├── (marketing)/  # Public pages
-│   │   │   │   ├── pricing/
+│   │   │   │   ├── features/
 │   │   │   │   ├── about/
 │   │   │   │   ├── blog/
 │   │   │   │   └── features/
@@ -205,7 +215,7 @@ better-auth-solution/
 │   │   │   ├── landing/      # Landing page sections
 │   │   │   └── layouts/      # Layout components
 │   │   ├── lib/              # Utilities
-│   │   │   ├── authClient.ts # Better-Auth client
+│   │   │   ├── authClient.ts # Authentication client
 │   │   │   └── utils.ts      # Helper functions
 │   │   └── hooks/            # Custom React hooks
 │   ├── public/               # Static assets
@@ -237,7 +247,7 @@ better-auth-solution/
 
 ```bash
 # Create project directory
-mkdir better-auth-solution && cd better-auth-solution
+mkdir my-auth-system && cd my-auth-system
 
 # Initialize Git repository
 git init
@@ -257,7 +267,7 @@ npm install --save-dev concurrently @types/node typescript jest @testing-library
 
 ```json
 {
-  "name": "better-auth-solution",
+  "name": "my-auth-system",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -273,9 +283,9 @@ npm install --save-dev concurrently @types/node typescript jest @testing-library
     "test:integration": "cd tests && npm test",
     "test:e2e": "playwright test",
     "docs:generate": "node --env-file=./server/.env ./scripts/generate-api-docs.mjs",
-    "migrate": "cd server && npx @better-auth/cli migrate",
-    "schema:generate": "cd server && npx @better-auth/cli generate",
-    "docker:build": "docker build -f docker/Dockerfile.production -t better-auth:latest .",
+    "migrate": "cd server && npx auth-cli migrate",
+    "schema:generate": "cd server && npx auth-cli generate",
+    "docker:build": "docker build -f docker/Dockerfile.production -t ${APP_NAME}:latest .",
     "docker:up": "docker-compose -f docker/docker-compose.yml up",
     "docker:down": "docker-compose -f docker/docker-compose.yml down",
     "lint": "eslint . --ext .ts,.tsx",
@@ -299,8 +309,8 @@ npm install --save-dev concurrently @types/node typescript jest @testing-library
 ```bash
 cd server
 
-# Clone better-auth starter template
-git clone https://github.com/kadumedim/better-auth-starter.git .
+# Clone authentication starter template
+git clone https://github.com/your-org/auth-starter.git .
 rm -rf .git
 
 # Add better-auth as Git submodule for version control
@@ -360,19 +370,24 @@ npm install --save-dev @types/react @types/react-dom
 **server/.env:**
 
 ```env
-# Core Configuration
+# Core Configuration - Customize These For Your Brand!
 NODE_ENV=development
 PORT=8787
-APP_NAME=${APP_NAME:-Your Auth System}
-APP_LOGO_URL=${APP_LOGO_URL:-/logo.png}
-APP_DESCRIPTION=${APP_DESCRIPTION:-Secure authentication for your application}
-APP_PRIMARY_COLOR=${APP_PRIMARY_COLOR:-#3B82F6}
-APP_DOMAIN=localhost
+
+# === BRANDING CONFIGURATION (Required - Set Your Own!) ===
+APP_NAME=Your Company Auth  # Your product/company name
+APP_LOGO_URL=/logo.png      # Your logo URL
+APP_DESCRIPTION=Secure authentication for your application  # Your description
+APP_PRIMARY_COLOR=#3B82F6   # Your brand color (hex)
+APP_FAVICON=/favicon.ico    # Your favicon
+APP_DOMAIN=localhost         # Your domain
+
+# Authentication Configuration
 BETTER_AUTH_SECRET=your-super-secret-key-minimum-32-characters-long-replace-in-production
 BETTER_AUTH_URL=http://localhost:3000
 
 # Database Configuration
-DATABASE_URL=postgresql://user:password@localhost:5432/better_auth_db
+DATABASE_URL=postgresql://user:password@localhost:5432/auth_db
 DATABASE_POOL_SIZE=20
 
 # Redis Configuration
@@ -435,10 +450,11 @@ CUSTOM_OAUTH_CLIENT_SECRET=your-custom-oauth-client-secret
 **frontend/.env.local:**
 
 ```env
-# Public Environment Variables
-NEXT_PUBLIC_APP_NAME=${APP_NAME:-Your Auth System}
-NEXT_PUBLIC_APP_LOGO_URL=${APP_LOGO_URL:-/logo.png}
-NEXT_PUBLIC_APP_PRIMARY_COLOR=${APP_PRIMARY_COLOR:-#3B82F6}
+# Public Environment Variables (These will be visible in the frontend)
+NEXT_PUBLIC_APP_NAME=${APP_NAME}         # Uses value from server .env
+NEXT_PUBLIC_APP_LOGO_URL=${APP_LOGO_URL} # Uses value from server .env
+NEXT_PUBLIC_APP_PRIMARY_COLOR=${APP_PRIMARY_COLOR} # Uses value from server .env
+NEXT_PUBLIC_APP_FAVICON=${APP_FAVICON}   # Uses value from server .env
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_AUTH_SERVER_URL=http://localhost:8787
 NEXT_PUBLIC_WS_URL=ws://localhost:8787
@@ -1070,7 +1086,7 @@ export const auth = betterAuth({
       async getCustomData(user) {
         // Add custom data to session
         return {
-          subscription: await getSubscription(user.id),
+          features: await getUserFeatures(user.id),
           preferences: await getPreferences(user.id),
           permissions: await getPermissions(user.id),
           organizations: await getUserOrganizations(user.id)
@@ -1131,7 +1147,7 @@ export const auth = betterAuth({
     openAPI({
       enabled: true,
       endpoint: "/api/auth/reference",
-      title: "Better Auth API",
+      title: `${process.env.APP_NAME} API`,
       version: "1.0.0",
       description: "Complete authentication API documentation"
     })
@@ -3628,7 +3644,7 @@ export class PerformanceMonitor {
 
 ## 13. Migration Guide
 
-### From NextAuth.js to Better Auth
+### From NextAuth.js to Modern Authentication
 
 ```typescript
 // migration/nextauth-to-better-auth.ts
@@ -3669,7 +3685,7 @@ export class NextAuthMigrator {
   }
 
   static async migrateDatabase() {
-    console.log("Starting database migration from NextAuth.js to Better Auth...");
+    console.log("Starting database migration from NextAuth.js to modern auth system...");
     
     await this.createBetterAuthTables();
     await this.migrateUsers();
@@ -3729,12 +3745,12 @@ export class NextAuthMigrator {
 #!/bin/bash
 # scripts/migrate-to-better-auth.sh
 
-echo "🚀 Starting migration to Better Auth..."
+echo "🚀 Starting migration to modern auth system..."
 
 # Backup current database
 pg_dump $DATABASE_URL > "backup_$(date +%Y%m%d_%H%M%S).sql"
 
-# Install Better Auth dependencies
+# Install authentication dependencies
 npm install better-auth @better-auth/drizzle
 
 # Run database migration
@@ -3749,7 +3765,7 @@ echo "✅ Migration completed!"
 
 ### Project Summary
 
-This comprehensive Better Auth implementation provides:
+This comprehensive authentication implementation provides:
 
 - **🔐 Complete Authentication System**: Email/password, OAuth providers, passkeys, 2FA
 - **🎨 Modern UI Components**: ShadCN UI and Aceternity UI integration
@@ -3806,10 +3822,10 @@ This implementation represents a production-grade authentication system that can
 
 ---
 
-*Generated with Better Auth - The future of authentication for modern web applications* 🚀
+*Generated for modern authentication in web applications* 🚀
 
 ```typescript
-// Thank you for using this comprehensive Better Auth guide!
+// Thank you for using this comprehensive authentication guide!
 console.log("🎉 Your authentication system is ready for production!");
 ```
 
@@ -3903,17 +3919,18 @@ export const usernamePlugin = username({
 
 // Two-Factor Authentication
 export const twoFactorPlugin = twoFactor({
-  issuer: "Better Auth Platform",
+  issuer: process.env.APP_NAME || "Auth Platform",
   qrCodeGenerator: async (secret: string, email: string) => {
     const QR = await import('qrcode');
-    const otpAuthURL = `otpauth://totp/${encodeURIComponent('Better Auth Platform')}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent('Better Auth Platform')}`;
+    const appName = process.env.APP_NAME || 'Auth Platform';
+    const otpAuthURL = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
     return await QR.toDataURL(otpAuthURL);
   }
 });
 
 // Sign in with Ethereum
 export const siwePlugin = siwe({
-  statement: "Sign in to Better Auth Platform with your Ethereum account",
+  statement: `Sign in to ${process.env.APP_NAME || 'Auth Platform'} with your Ethereum account`,
   version: "1",
   chainId: 1, // Ethereum mainnet
   validateMessage: async ({ message, signature, address }) => {
@@ -3927,7 +3944,7 @@ export const phoneNumberPlugin = phoneNumber({
   provider: {
     sendSMS: async (phoneNumber: string, code: string) => {
       await twilioClient.messages.create({
-        body: `Your Better Auth verification code: ${code}`,
+        body: `Your ${process.env.APP_NAME || 'authentication'} verification code: ${code},`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: phoneNumber
       });
@@ -3973,35 +3990,35 @@ export const organizationPlugin = organization({
       canManageMembers: true,
       canManageTeams: true,
       canDeleteOrganization: true,
-      canManageBilling: true
+      canManageFeatures: true
     },
     admin: {
       permissions: ['read', 'write', 'delete', 'manage_users'],
       canManageMembers: true,
       canManageTeams: true,
       canDeleteOrganization: false,
-      canManageBilling: false
+      canManageFeatures: false
     },
     manager: {
       permissions: ['read', 'write', 'manage_team'],
       canManageMembers: false,
       canManageTeams: true,
       canDeleteOrganization: false,
-      canManageBilling: false
+      canManageFeatures: false
     },
     member: {
       permissions: ['read', 'write'],
       canManageMembers: false,
       canManageTeams: false,
       canDeleteOrganization: false,
-      canManageBilling: false
+      canManageFeatures: false
     },
     viewer: {
       permissions: ['read'],
       canManageMembers: false,
       canManageTeams: false,
       canDeleteOrganization: false,
-      canManageBilling: false
+      canManageFeatures: false
     }
   },
   
@@ -4098,7 +4115,7 @@ import { apiKey, bearer, jwt, rateLimit } from "better-auth/plugins";
 
 // API Key Plugin
 export const apiKeyPlugin = apiKey({
-  prefix: 'ba_', // Better Auth prefix
+  prefix: 'auth_', // Authentication prefix
   length: 32,
   hashKey: true,
   
@@ -4275,7 +4292,7 @@ export const customOAuthPlugin = genericOAuth({
 
 // OpenAPI Documentation Plugin
 export const openAPIPlugin = openAPI({
-  title: 'Better Auth API',
+  title: `${process.env.APP_NAME || 'Authentication'} API`,
   version: '1.0.0',
   description: 'Authentication and user management API',
   
@@ -4608,7 +4625,7 @@ export class OrganizationService {
           allowPasswordReset: true,
           sessionTimeout: 24 * 60 * 60 * 1000,
         },
-        billing: {
+        features: {
           plan: 'free',
           trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         }
@@ -4650,7 +4667,7 @@ export class PermissionManager {
     'org:read': 'View organization information',
     'org:write': 'Update organization settings',
     'org:delete': 'Delete organization',
-    'org:billing': 'Manage billing and subscriptions',
+    'org:features': 'Manage features and configurations',
     
     // Security
     'security:audit': 'View audit logs',
@@ -5554,7 +5571,7 @@ The landing page serves as the primary entry point for the Better-Auth platform,
 import { HeroSection } from '@/components/landing/hero-section';
 import { FeaturesSection } from '@/components/landing/features-section';
 import { AuthShowcase } from '@/components/landing/auth-showcase';
-import { PricingPreview } from '@/components/landing/pricing-preview';
+import { FeaturesPreview } from '@/components/landing/features-preview';
 import { TestimonialsSection } from '@/components/landing/testimonials';
 import { CTASection } from '@/components/landing/cta-section';
 import { Footer } from '@/components/landing/footer';
@@ -5565,7 +5582,7 @@ export default function LandingPage() {
       <HeroSection />
       <FeaturesSection />
       <AuthShowcase />
-      <PricingPreview />
+      <FeaturesPreview />
       <TestimonialsSection />
       <CTASection />
       <Footer />
@@ -5618,7 +5635,7 @@ export function HeroSection() {
           </div>
           
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-            Better Auth
+            ${APP_NAME}
           </h1>
           
           <div className="max-w-3xl mx-auto">
@@ -6205,7 +6222,7 @@ function TwoFactorDemo() {
 }
 ```
 
-#### Pricing Preview Section
+#### Features Preview Section
 
 ```typescript
 // components/landing/deployment-guide.tsx
@@ -7191,7 +7208,7 @@ export const emailConfig = {
     },
   },
   from: {
-    name: process.env.EMAIL_FROM_NAME || 'Better Auth',
+    name: process.env.EMAIL_FROM_NAME || process.env.APP_NAME || 'Authentication System',
     address: process.env.EMAIL_FROM_ADDRESS || 'noreply@better-auth.com',
   },
   templates: {
@@ -8921,6 +8938,177 @@ fi
 - [ ] Disaster recovery plan is in place
 ```
 
-This comprehensive documentation now totals over 8,230 lines and provides complete coverage of Better-Auth implementation, from basic setup to advanced production deployment strategies.
+---
+
+## Open-Source Deployment Guide
+
+### GitHub Repository Setup
+
+This authentication system is designed to be deployed as an open-source project that others can clone and customize:
+
+```bash
+# Fork or clone the repository
+git clone https://github.com/yourusername/your-auth-system.git
+cd your-auth-system
+
+# Install dependencies
+npm install
+
+# Copy environment templates
+cp server/.env.example server/.env
+cp frontend/.env.example frontend/.env.local
+
+# Configure your branding in .env files
+# Edit APP_NAME, APP_LOGO_URL, APP_PRIMARY_COLOR, etc.
+
+# Run development servers
+npm run dev
+```
+
+### Docker Deployment
+
+```bash
+# Build and run with Docker
+docker-compose up -d
+
+# Your branded auth system is now running!
+```
+
+### Community Deployment
+
+- **MIT License**: Full freedom to use commercially
+- **No Attribution Required**: Deploy as your own product
+- **Complete Customization**: Modify any part of the codebase
+- **Self-Hosted**: Keep all data under your control
+
+---
+
+## White-Labeling & Customization
+
+### Complete Brand Customization
+
+This authentication system is designed from the ground up to be YOUR authentication system, not a third-party service. Every aspect can be customized through environment variables and configuration.
+
+#### Environment-Based Branding
+
+All branding elements are controlled through environment variables:
+
+```env
+# Primary Branding
+APP_NAME=Acme Auth                    # Your company/product name
+APP_LOGO_URL=/assets/acme-logo.svg    # Your logo
+APP_FAVICON=/assets/acme-favicon.ico  # Your favicon
+APP_PRIMARY_COLOR=#FF6B6B             # Your brand color
+APP_SECONDARY_COLOR=#4ECDC4           # Your secondary color
+
+# Company Information
+APP_COMPANY_NAME=Acme Corporation
+APP_SUPPORT_EMAIL=support@acme.com
+APP_SUPPORT_URL=https://support.acme.com
+APP_PRIVACY_URL=https://acme.com/privacy
+APP_TERMS_URL=https://acme.com/terms
+
+# Custom Descriptions
+APP_DESCRIPTION=Enterprise authentication for Acme products
+APP_TAGLINE=Secure. Simple. Scalable.
+```
+
+#### Dynamic Theme System
+
+The UI automatically adapts to your brand colors:
+
+```typescript
+// The system automatically generates theme variations
+const theme = {
+  primary: process.env.NEXT_PUBLIC_APP_PRIMARY_COLOR,
+  primaryDark: darken(0.1, primary),
+  primaryLight: lighten(0.1, primary),
+  // ... automatically generated shades
+};
+```
+
+#### Custom Email Templates
+
+All email templates use your branding:
+
+```html
+<!-- Email template automatically uses your configuration -->
+<img src="${APP_LOGO_URL}" alt="${APP_NAME}" />
+<h1>Welcome to ${APP_NAME}</h1>
+<p style="color: ${APP_PRIMARY_COLOR}">
+  Your account has been created successfully.
+</p>
+```
+
+#### Multi-Tenant White-Labeling
+
+For SaaS platforms serving multiple organizations:
+
+```typescript
+// Each organization can have custom branding
+interface OrganizationBranding {
+  name: string;
+  logo: string;
+  primaryColor: string;
+  customDomain?: string;
+  emailFromName?: string;
+}
+
+// Branding applied per organization
+const branding = await getOrganizationBranding(orgId);
+```
+
+#### Custom Domain Support
+
+```nginx
+# Nginx configuration for custom domains
+server {
+  server_name *.customers.yourdomain.com;
+  
+  location / {
+    # Route to specific organization
+    proxy_pass http://localhost:3000;
+    proxy_set_header X-Organization-Domain $host;
+  }
+}
+```
+
+#### Feature Toggle Dashboard
+
+Enable/disable features through the admin dashboard:
+
+- **Authentication Methods**: Toggle email, OAuth, passkeys, magic links
+- **Security Features**: Enable/disable 2FA, session management, rate limiting
+- **API Access**: Control API key generation, OAuth scopes
+- **Integrations**: Enable/disable email providers, SMS services
+- **UI Components**: Show/hide features based on your needs
+
+#### API Customization
+
+All API responses include your branding:
+
+```json
+{
+  "app": {
+    "name": "Acme Auth",
+    "version": "1.0.0",
+    "logo": "https://cdn.acme.com/logo.svg"
+  },
+  "data": { ... }
+}
+```
+
+### Deployment as Your Own Product
+
+1. **Clone the Repository**
+2. **Configure Your Branding** in environment files
+3. **Deploy to Your Infrastructure**
+4. **Your Authentication System is Ready!**
+
+No "Powered by" badges. No external branding. This is 100% your product.
+
+---
+
+This comprehensive documentation provides complete coverage of this open-source authentication system implementation, from basic setup to advanced production deployment strategies. The system is fully customizable and can be deployed as your own branded authentication solution.
 
 ---
