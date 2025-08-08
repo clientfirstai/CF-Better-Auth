@@ -1,0 +1,124 @@
+name: Better-Auth Compatibility Check
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  check-compatibility:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+      
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Check for better-auth updates
+        id: check-updates
+        run: |
+          cd vendor/better-auth
+          git fetch origin
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse origin/main)
+          if [ "$LOCAL" != "$REMOTE" ]; then
+            echo "updates_available=true" >> $GITHUB_OUTPUT
+            echo "New better-auth updates available"
+          else
+            echo "updates_available=false" >> $GITHUB_OUTPUT
+            echo "No updates available"
+          fi
+      
+      - name: Run compatibility check
+        run: pnpm run compatibility:check
+      
+      - name: Run tests
+        run: pnpm test
+      
+      - name: Build packages
+        run: pnpm build
+      
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: compatibility-report
+          path: compatibility-report.json
+      
+      - name: Create issue if compatibility fails
+        if: failure()
+        uses: actions/create-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          title: "Better-Auth Compatibility Check Failed"
+          body: |
+            The compatibility check with better-auth has failed.
+            
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Date:** ${{ github.event.head_commit.timestamp }}
+            
+            Please review the compatibility report and update the adapters as necessary.
+          labels: compatibility, automated
+      
+      - name: Auto-update if compatible
+        if: steps.check-updates.outputs.updates_available == 'true' && success()
+        run: |
+          pnpm run upgrade:better-auth
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: update better-auth to latest version"
+      
+      - name: Create Pull Request
+        if: steps.check-updates.outputs.updates_available == 'true' && success()
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "chore: Update better-auth to latest version"
+          body: |
+            This PR updates better-auth to the latest version.
+            
+            **Compatibility Check:** ✅ Passed
+            **Tests:** ✅ Passed
+            **Build:** ✅ Successful
+            
+            Please review the changes before merging.
+          branch: auto-update/better-auth
+          delete-branch: true

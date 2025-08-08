@@ -1,0 +1,53 @@
+{
+  "name": "cf-better-auth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enterprise authentication platform built on better-auth",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:server": "turbo run dev --filter=server",
+    "dev:frontend": "turbo run dev --filter=@cf-auth/web",
+    "build": "turbo run build",
+    "build:packages": "turbo run build --filter=./packages/*",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "typecheck": "turbo run typecheck",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check",
+    "clean": "turbo run clean",
+    "docs:generate": "turbo run docs:generate",
+    "migrate": "cd server && npx auth-cli migrate",
+    "schema:generate": "cd server && npx auth-cli generate",
+    "docker:build": "docker build -f docker/Dockerfile.production -t ${APP_NAME}:latest .",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "upgrade:better-auth": "node scripts/upgrade-better-auth.js",
+    "compatibility:check": "turbo run compatibility:check",
+    "ci": "turbo run build lint typecheck test",
+    "prepare": "husky install || true"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "jest": "^29.7.0",
+    "@testing-library/react": "^14.1.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.0",
+    "@playwright/test": "^1.40.0",
+    "turbo": "^1.11.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.14.1"
+}

@@ -3,7 +3,10 @@
     "allow": [
       "mcp__server-sequential-thinking__sequentialthinking",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git submodule:*)",
+      "Bash(git tag:*)",
+      "Bash(git describe:*)"
     ],
     "deny": []
   }

@@ -1,0 +1,32 @@
+{
+  "name": "@cf-auth/config",
+  "version": "0.1.0",
+  "description": "Configuration and version management for CF-Better-Auth",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cf-auth/types": "workspace:*",
+    "@cf-auth/utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "better-auth": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  }
+}

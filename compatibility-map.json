@@ -1,0 +1,30 @@
+{
+  "breakingVersions": ["2.0.0", "3.0.0"],
+  "versions": {
+    "1.0.0": {
+      "compatible": true,
+      "notes": []
+    },
+    "1.1.0": {
+      "compatible": true,
+      "notes": []
+    },
+    "2.0.0": {
+      "compatible": false,
+      "notes": [
+        "Database provider names changed from 'postgres' to 'postgresql'",
+        "Session API completely rewritten",
+        "Constructor signature changed"
+      ]
+    }
+  },
+  "migrations": {
+    "1.x-to-2.x": {
+      "steps": [
+        "Update database provider configuration",
+        "Migrate session handling code",
+        "Update constructor calls"
+      ]
+    }
+  }
+}

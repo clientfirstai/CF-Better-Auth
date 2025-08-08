@@ -1,0 +1,94 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local", "tsconfig.json"],
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "build/**"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_*"
+      ]
+    },
+    "build:packages": {
+      "dependsOn": ["^build"],
+      "outputs": ["packages/*/dist/**"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "NODE_ENV",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "BETTER_AUTH_SECRET",
+        "NEXT_PUBLIC_*"
+      ]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"],
+      "env": [
+        "NODE_ENV",
+        "DATABASE_URL",
+        "REDIS_URL"
+      ]
+    },
+    "test:unit": {
+      "outputs": ["coverage/**"],
+      "cache": true
+    },
+    "test:integration": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL"
+      ]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "BETTER_AUTH_URL"
+      ]
+    },
+    "lint": {
+      "outputs": [],
+      "cache": true
+    },
+    "lint:fix": {
+      "outputs": [],
+      "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["^build:packages"],
+      "outputs": [],
+      "cache": true
+    },
+    "format": {
+      "outputs": [],
+      "cache": false
+    },
+    "format:check": {
+      "outputs": [],
+      "cache": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "compatibility:check": {
+      "dependsOn": ["build:packages"],
+      "cache": false,
+      "outputs": ["compatibility-report.json"]
+    },
+    "docs:generate": {
+      "dependsOn": ["build"],
+      "outputs": ["docs/API_DOCS.md"],
+      "cache": true
+    }
+  }
+}

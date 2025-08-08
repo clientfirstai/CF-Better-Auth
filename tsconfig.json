@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@cf-auth/core": ["./packages/core/src"],
+      "@cf-auth/client": ["./packages/client/src"],
+      "@cf-auth/plugins": ["./packages/plugins/src"],
+      "@cf-auth/config": ["./packages/config/src"],
+      "@cf-auth/types": ["./packages/types/src"],
+      "@cf-auth/utils": ["./packages/utils/src"]
+    }
+  },
+  "include": ["packages/**/*.ts", "packages/**/*.tsx", "apps/**/*.ts", "apps/**/*.tsx"],
+  "exclude": ["node_modules", "dist", "build", "coverage", ".turbo"]
+}

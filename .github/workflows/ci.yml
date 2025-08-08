@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+jobs:
+  test:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Type check
+        run: pnpm turbo typecheck
+      
+      - name: Lint
+        run: pnpm turbo lint
+      
+      - name: Test
+        run: pnpm turbo test
+      
+      - name: Build
+        run: pnpm turbo build
+      
+      - name: Check compatibility
+        run: pnpm run compatibility:check
+
+  compatibility-matrix:
+    name: Compatibility Matrix
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[compatibility]') || github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        better-auth-version: ['latest', 'beta', '1.0.0']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Update better-auth to ${{ matrix.better-auth-version }}
+        run: |
+          cd vendor/better-auth
+          git checkout main
+          git pull
+          if [ "${{ matrix.better-auth-version }}" != "latest" ]; then
+            git checkout ${{ matrix.better-auth-version }} 2>/dev/null || git checkout tags/${{ matrix.better-auth-version }}
+          fi
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Test compatibility
+        run: pnpm run compatibility:check
+        continue-on-error: true
+      
+      - name: Generate compatibility report
+        run: |
+          echo "Compatibility test for better-auth ${{ matrix.better-auth-version }}" > compatibility-report-${{ matrix.better-auth-version }}.md
+          pnpm run compatibility:check >> compatibility-report-${{ matrix.better-auth-version }}.md 2>&1 || true
+      
+      - name: Upload compatibility report
+        uses: actions/upload-artifact@v3
+        with:
+          name: compatibility-reports
+          path: compatibility-report-*.md
