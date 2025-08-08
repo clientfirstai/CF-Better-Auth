@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__server-sequential-thinking__sequentialthinking",
+      "Bash(find:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}
