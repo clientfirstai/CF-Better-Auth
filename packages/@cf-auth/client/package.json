@@ -1,0 +1,79 @@
+{
+  "name": "@cf-auth/client",
+  "version": "0.1.0",
+  "description": "Client-side authentication wrapper that works with the @cf-auth/core server adapter",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  },
+  "keywords": [
+    "authentication",
+    "better-auth",
+    "client",
+    "react",
+    "hooks",
+    "websocket",
+    "typescript"
+  ],
+  "dependencies": {
+    "@cf-auth/core": "workspace:*",
+    "@cf-auth/types": "workspace:*",
+    "@cf-auth/utils": "workspace:*",
+    "@cf-auth/plugin-interfaces": "workspace:*",
+    "nanostores": "^0.10.0",
+    "better-auth": "file:../../../vendor/better-auth",
+    "ws": "^8.16.0",
+    "eventemitter3": "^5.0.1"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/ws": "^8.5.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cf-better-auth/cf-better-auth.git",
+    "directory": "packages/@cf-auth/client"
+  },
+  "license": "MIT",
+  "sideEffects": false
+}

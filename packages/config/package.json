@@ -1,7 +1,7 @@
 {
   "name": "@cf-auth/config",
   "version": "0.1.0",
-  "description": "Configuration and version management for CF-Better-Auth",
+  "description": "Configuration management, validation, and loading system for CF-Better-Auth",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -10,23 +10,83 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./schemas": {
+      "import": "./dist/schemas/index.mjs",
+      "require": "./dist/schemas/index.js",
+      "types": "./dist/schemas/index.d.ts"
+    },
+    "./presets": {
+      "import": "./dist/presets/index.mjs",
+      "require": "./dist/presets/index.js",
+      "types": "./dist/presets/index.d.ts"
+    },
+    "./loaders": {
+      "import": "./dist/loaders/index.mjs",
+      "require": "./dist/loaders/index.js",
+      "types": "./dist/loaders/index.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "examples",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@cf-auth/types": "workspace:*",
-    "@cf-auth/utils": "workspace:*"
+    "@cf-auth/utils": "workspace:*",
+    "zod": "^3.22.4",
+    "dotenv": "^16.3.1",
+    "yaml": "^2.3.4",
+    "chokidar": "^3.5.3",
+    "jose": "^5.2.0",
+    "node-vault": "^0.10.2"
   },
   "peerDependencies": {
     "better-auth": "*"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
+    "@types/js-yaml": "^4.0.9",
     "tsup": "^8.0.1",
-    "typescript": "^5.3.3"
-  }
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0",
+    "eslint": "^8.56.0"
+  },
+  "optionalDependencies": {
+    "joi": "^17.12.0",
+    "@aws-sdk/client-secrets-manager": "^3.478.0",
+    "@azure/keyvault-secrets": "^4.7.0",
+    "axios": "^1.6.7"
+  },
+  "keywords": [
+    "config",
+    "configuration",
+    "validation",
+    "auth",
+    "better-auth",
+    "cloudflare",
+    "typescript",
+    "zod",
+    "environment",
+    "secrets"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cf-auth/cf-better-auth.git",
+    "directory": "packages/@cf-auth/config"
+  },
+  "homepage": "https://cf-auth.dev",
+  "bugs": "https://github.com/cf-auth/cf-better-auth/issues",
+  "license": "MIT",
+  "author": "CF-Auth Team"
 }

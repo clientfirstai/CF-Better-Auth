@@ -1,7 +1,7 @@
 {
   "name": "@cf-auth/plugins",
   "version": "0.1.0",
-  "description": "Plugin adapter system for CF-Better-Auth",
+  "description": "Plugin system implementation and built-in plugins for CF-Better-Auth",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -10,26 +10,65 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./plugins/*": {
+      "import": "./dist/plugins/*.mjs",
+      "require": "./dist/plugins/*.js",
+      "types": "./dist/plugins/*.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
-    "typecheck": "tsc --noEmit"
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@cf-auth/core": "workspace:*",
     "@cf-auth/types": "workspace:*",
-    "@cf-auth/utils": "workspace:*"
+    "@cf-auth/utils": "workspace:*",
+    "eventemitter3": "^5.0.1",
+    "zod": "^3.22.4",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1",
+    "nanoid": "^5.0.4",
+    "ioredis": "^5.3.2",
+    "rate-limiter-flexible": "^4.0.1",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5"
   },
   "peerDependencies": {
     "better-auth": "*"
   },
+  "optionalDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.5"
+  },
   "devDependencies": {
     "@types/node": "^20.11.5",
+    "@types/cors": "^2.8.17",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
     "vitest": "^1.2.1"
-  }
+  },
+  "keywords": [
+    "authentication",
+    "auth",
+    "plugins",
+    "cloudflare",
+    "better-auth",
+    "mfa",
+    "oauth",
+    "session",
+    "rate-limiting",
+    "audit",
+    "rbac"
+  ]
 }

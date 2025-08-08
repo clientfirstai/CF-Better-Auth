@@ -1,4 +1,4 @@
-import { betterAuth } from 'better-auth';
+import { BetterAuthAdapter } from '@cf-auth/core';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { 
   emailOTP,
@@ -37,7 +37,8 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
-export const auth = betterAuth({
+// Create the authentication adapter with CF-Better-Auth
+const authAdapter = new BetterAuthAdapter({
   // Database configuration
   database: drizzleAdapter(db, {
     provider: 'pg',
@@ -303,6 +304,64 @@ export const auth = betterAuth({
 
   // Trusted origins for CORS
   trustedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']
+}, {
+  // Adapter options
+  debug: process.env.NODE_ENV === 'development',
+  betterAuthVersion: 'latest'
 });
 
-export type AuthType = typeof auth;
+// Create initialization promise
+let authInitPromise: Promise<any> | null = null;
+let authInstance: any = null;
+
+// Initialize the adapter
+async function initializeAuth() {
+  if (!authInitPromise) {
+    authInitPromise = authAdapter.initialize().then(() => {
+      authInstance = authAdapter.getAuthInstance();
+      console.log('✅ CF-Better-Auth adapter initialized successfully');
+      return authInstance;
+    }).catch((error) => {
+      console.error('Failed to initialize CF-Better-Auth adapter:', error);
+      throw error;
+    });
+  }
+  return authInitPromise;
+}
+
+// Create auth proxy that ensures initialization
+export const auth = new Proxy({} as any, {
+  get(target, prop) {
+    if (prop === 'handler') {
+      return async (req: Request) => {
+        await initializeAuth();
+        if (!authInstance || !authInstance.handler) {
+          throw new Error('Auth not initialized');
+        }
+        return authInstance.handler(req);
+      };
+    }
+    if (prop === 'api') {
+      return new Proxy({}, {
+        get(apiTarget, apiProp) {
+          return async (...args: any[]) => {
+            await initializeAuth();
+            if (!authInstance || !authInstance.api || !authInstance.api[apiProp]) {
+              throw new Error(`Auth API method ${String(apiProp)} not available`);
+            }
+            return authInstance.api[apiProp](...args);
+          };
+        }
+      });
+    }
+    // For other properties, ensure initialization and return from authInstance
+    return (async () => {
+      await initializeAuth();
+      return authInstance[prop];
+    })();
+  }
+});
+
+// Export the adapter for advanced usage
+export { authAdapter };
+export type AuthType = typeof authInstance;

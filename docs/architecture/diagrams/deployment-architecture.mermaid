@@ -1,0 +1,352 @@
+```mermaid
+graph TB
+    subgraph "Development Environment"
+        DEV_LOCAL[Local Docker Compose]
+        DEV_DB[(PostgreSQL Dev)]
+        DEV_REDIS[(Redis Dev)]
+        DEV_APP[NextJS Dev Server]
+        
+        DEV_LOCAL --> DEV_APP
+        DEV_APP --> DEV_DB
+        DEV_APP --> DEV_REDIS
+    end
+
+    subgraph "CI/CD Pipeline"
+        GIT[GitHub Repository]
+        ACTIONS[GitHub Actions]
+        BUILD[Build & Test]
+        DOCKER_BUILD[Docker Build]
+        REGISTRY[Container Registry]
+        
+        GIT --> ACTIONS
+        ACTIONS --> BUILD
+        BUILD --> DOCKER_BUILD
+        DOCKER_BUILD --> REGISTRY
+    end
+
+    subgraph "Staging Environment"
+        subgraph "Container Orchestration"
+            K8S_STAGE[Kubernetes Cluster]
+            STAGE_PODS[App Pods x3]
+            STAGE_SVC[Service/Ingress]
+        end
+        
+        subgraph "Staging Data"
+            STAGE_PG[(PostgreSQL Staging)]
+            STAGE_REDIS[(Redis Staging)]
+            STAGE_S3[(S3 Staging)]
+        end
+        
+        K8S_STAGE --> STAGE_PODS
+        STAGE_PODS --> STAGE_SVC
+        STAGE_PODS --> STAGE_PG
+        STAGE_PODS --> STAGE_REDIS
+        STAGE_PODS --> STAGE_S3
+    end
+
+    subgraph "Production Deployment Options"
+        subgraph "Option 1: AWS"
+            subgraph "AWS Infrastructure"
+                ECS[ECS/Fargate]
+                ALB[Application Load Balancer]
+                CF[CloudFront CDN]
+                WAF_AWS[AWS WAF]
+            end
+            
+            subgraph "AWS Data"
+                RDS[(RDS PostgreSQL<br/>Multi-AZ)]
+                ELASTICACHE[(ElastiCache Redis)]
+                S3_PROD[(S3 Bucket)]
+            end
+            
+            CF --> WAF_AWS
+            WAF_AWS --> ALB
+            ALB --> ECS
+            ECS --> RDS
+            ECS --> ELASTICACHE
+            ECS --> S3_PROD
+        end
+
+        subgraph "Option 2: Kubernetes"
+            subgraph "K8s Infrastructure"
+                K8S_PROD[Production K8s Cluster]
+                NGINX[NGINX Ingress]
+                PODS[App Pods x10]
+                HPA[Horizontal Pod Autoscaler]
+            end
+            
+            subgraph "K8s Data"
+                PG_CLUSTER[(PostgreSQL HA Cluster)]
+                REDIS_CLUSTER[(Redis Cluster)]
+                MINIO[(MinIO Object Storage)]
+            end
+            
+            NGINX --> K8S_PROD
+            K8S_PROD --> PODS
+            PODS --> HPA
+            PODS --> PG_CLUSTER
+            PODS --> REDIS_CLUSTER
+            PODS --> MINIO
+        end
+
+        subgraph "Option 3: Serverless"
+            subgraph "Vercel/Edge"
+                VERCEL[Vercel Functions]
+                EDGE[Edge Runtime]
+                KV[Vercel KV]
+            end
+            
+            subgraph "Serverless Data"
+                NEON[(Neon PostgreSQL)]
+                UPSTASH[(Upstash Redis)]
+                R2[(Cloudflare R2)]
+            end
+            
+            EDGE --> VERCEL
+            VERCEL --> NEON
+            VERCEL --> UPSTASH
+            VERCEL --> R2
+            VERCEL --> KV
+        end
+
+        subgraph "Option 4: Docker Swarm"
+            subgraph "Swarm Infrastructure"
+                SWARM[Docker Swarm]
+                TRAEFIK[Traefik]
+                SERVICES[Services x5]
+            end
+            
+            subgraph "Swarm Data"
+                PG_SWARM[(PostgreSQL)]
+                REDIS_SWARM[(Redis)]
+                VOLUME[Docker Volumes]
+            end
+            
+            TRAEFIK --> SWARM
+            SWARM --> SERVICES
+            SERVICES --> PG_SWARM
+            SERVICES --> REDIS_SWARM
+            SERVICES --> VOLUME
+        end
+    end
+
+    subgraph "Monitoring & Observability"
+        GRAFANA[Grafana]
+        PROMETHEUS[Prometheus]
+        LOKI[Loki]
+        JAEGER[Jaeger]
+        
+        ECS -.-> PROMETHEUS
+        PODS -.-> PROMETHEUS
+        VERCEL -.-> PROMETHEUS
+        SERVICES -.-> PROMETHEUS
+        
+        PROMETHEUS --> GRAFANA
+        LOKI --> GRAFANA
+        JAEGER --> GRAFANA
+    end
+
+    %% CI/CD Flow
+    REGISTRY --> K8S_STAGE
+    REGISTRY --> ECS
+    REGISTRY --> K8S_PROD
+    REGISTRY --> SWARM
+    REGISTRY --> VERCEL
+
+    classDef dev fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef cicd fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef stage fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef prod fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef monitor fill:#ede7f6,stroke:#311b92,stroke-width:2px
+
+    class DEV_LOCAL,DEV_DB,DEV_REDIS,DEV_APP dev
+    class GIT,ACTIONS,BUILD,DOCKER_BUILD,REGISTRY cicd
+    class K8S_STAGE,STAGE_PODS,STAGE_SVC,STAGE_PG,STAGE_REDIS,STAGE_S3 stage
+    class ECS,ALB,CF,WAF_AWS,RDS,ELASTICACHE,S3_PROD,K8S_PROD,NGINX,PODS,HPA,PG_CLUSTER,REDIS_CLUSTER,MINIO,VERCEL,EDGE,KV,NEON,UPSTASH,R2,SWARM,TRAEFIK,SERVICES,PG_SWARM,REDIS_SWARM,VOLUME prod
+    class GRAFANA,PROMETHEUS,LOKI,JAEGER monitor
+```
+
+---
+
+## Deployment Configurations
+
+### Docker Compose (Development)
+```yaml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./:/app
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: cfauth_dev
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: dev_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+### Kubernetes Production Manifest
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cf-better-auth
+  namespace: production
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: cf-better-auth
+  template:
+    metadata:
+      labels:
+        app: cf-better-auth
+    spec:
+      containers:
+      - name: app
+        image: cf-better-auth:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: cf-auth-secrets
+              key: database-url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cf-better-auth-service
+  namespace: production
+spec:
+  selector:
+    app: cf-better-auth
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cf-better-auth-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cf-better-auth
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+```
+
+### AWS ECS Task Definition
+```json
+{
+  "family": "cf-better-auth",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "containerDefinitions": [
+    {
+      "name": "cf-better-auth",
+      "image": "cf-better-auth:latest",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:region:account:secret:cf-auth-db"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cf-better-auth",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Vercel Deployment Configuration
+```json
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm build",
+  "outputDirectory": ".next",
+  "regions": ["iad1", "sfo1", "sin1"],
+  "functions": {
+    "api/auth/*": {
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "REDIS_URL": "@redis-url",
+    "NEXTAUTH_SECRET": "@nextauth-secret"
+  }
+}
+```

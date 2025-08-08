@@ -1,0 +1,89 @@
+# Multi-stage Dockerfile for Auth Server
+
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat python3 make g++
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY pnpm-lock.yaml* ./
+COPY .npmrc* ./
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package*.json ./
+
+# Copy source code
+COPY . .
+
+# Copy packages and vendor directories
+COPY ../packages /packages
+COPY ../vendor /vendor
+
+# Build the application
+RUN npm run build
+
+# Stage 3: Runner (Production)
+FROM node:20-alpine AS runner
+RUN apk add --no-cache libc6-compat curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+# Copy necessary files from builder
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /packages /packages
+COPY --from=builder --chown=nodejs:nodejs /vendor /vendor
+
+# Copy health check script
+COPY --chown=nodejs:nodejs docker/health-check.js ./health-check.js
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=8787
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port
+EXPOSE 8787
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node health-check.js || exit 1
+
+# Start the application
+CMD ["node", "dist/index.js"]
+
+# Development stage (optional)
+FROM deps AS dev
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Install dev dependencies
+RUN pnpm install
+
+# Expose port
+EXPOSE 8787
+
+# Start development server
+CMD ["pnpm", "run", "dev"]

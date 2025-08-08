@@ -1,0 +1,159 @@
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant B as Browser
+    participant CDN as CDN/WAF
+    participant LB as Load Balancer
+    participant APP as NextJS App
+    participant AUTH as CF-Better-Auth
+    participant DB as PostgreSQL
+    participant REDIS as Redis
+    participant EMAIL as Email Service
+    participant OAUTH as OAuth Provider
+
+    %% Registration Flow
+    Note over U,OAUTH: User Registration Flow
+    U->>B: Enter registration details
+    B->>CDN: POST /api/auth/register
+    CDN->>LB: Forward request (rate limit check)
+    LB->>APP: Route to available instance
+    APP->>AUTH: Process registration
+    AUTH->>AUTH: Validate input
+    AUTH->>AUTH: Hash password (Argon2id)
+    AUTH->>DB: Check existing user
+    DB-->>AUTH: User not found
+    AUTH->>DB: Create user record
+    AUTH->>REDIS: Store verification token
+    AUTH->>EMAIL: Send verification email
+    EMAIL-->>U: Verification email
+    AUTH->>DB: Create audit log
+    AUTH-->>APP: Return success + session
+    APP->>REDIS: Store session
+    APP-->>LB: Response with session cookie
+    LB-->>CDN: Forward response
+    CDN-->>B: Set secure cookie
+    B-->>U: Registration complete
+
+    %% Email Verification Flow
+    Note over U,OAUTH: Email Verification Flow
+    U->>B: Click verification link
+    B->>CDN: GET /api/auth/verify?token=xxx
+    CDN->>LB: Forward request
+    LB->>APP: Route request
+    APP->>AUTH: Process verification
+    AUTH->>REDIS: Validate token
+    REDIS-->>AUTH: Token valid
+    AUTH->>DB: Update user.emailVerified
+    AUTH->>REDIS: Delete token
+    AUTH->>DB: Create audit log
+    AUTH-->>APP: Verification complete
+    APP-->>B: Redirect to login
+
+    %% Login Flow (Email/Password)
+    Note over U,OAUTH: Login Flow
+    U->>B: Enter credentials
+    B->>CDN: POST /api/auth/login
+    CDN->>LB: Forward request
+    LB->>APP: Route to instance
+    APP->>AUTH: Process login
+    AUTH->>DB: Find user by email
+    DB-->>AUTH: User found
+    AUTH->>AUTH: Verify password
+    AUTH->>AUTH: Check MFA required
+    AUTH->>AUTH: Generate JWT tokens
+    AUTH->>REDIS: Store refresh token
+    AUTH->>DB: Update last login
+    AUTH->>DB: Create audit log
+    AUTH-->>APP: Return tokens
+    APP->>REDIS: Create session
+    APP-->>B: Set cookies + tokens
+    B-->>U: Login successful
+
+    %% OAuth Flow
+    Note over U,OAUTH: OAuth Authentication Flow
+    U->>B: Click "Login with Google"
+    B->>CDN: GET /api/auth/oauth/google
+    CDN->>APP: Forward request
+    APP->>AUTH: Initialize OAuth
+    AUTH-->>B: Redirect to Google
+    B->>OAUTH: Authorization request
+    U->>OAUTH: Approve access
+    OAUTH-->>B: Redirect with code
+    B->>CDN: GET /api/auth/callback?code=xxx
+    CDN->>APP: Forward callback
+    APP->>AUTH: Process callback
+    AUTH->>OAUTH: Exchange code for tokens
+    OAUTH-->>AUTH: Access token + profile
+    AUTH->>DB: Find or create user
+    AUTH->>DB: Link OAuth account
+    AUTH->>AUTH: Generate session
+    AUTH->>REDIS: Store session
+    AUTH-->>APP: OAuth complete
+    APP-->>B: Set session cookies
+    B-->>U: Logged in via OAuth
+
+    %% Session Validation Flow
+    Note over U,OAUTH: Session Validation Flow
+    U->>B: Access protected route
+    B->>CDN: GET /api/protected (with cookie)
+    CDN->>LB: Forward with cookie
+    LB->>APP: Route request
+    APP->>AUTH: Validate session
+    AUTH->>REDIS: Check session cache
+    
+    alt Session in cache
+        REDIS-->>AUTH: Session valid
+        AUTH-->>APP: User authenticated
+    else Session not in cache
+        AUTH->>DB: Validate token
+        DB-->>AUTH: Token valid
+        AUTH->>REDIS: Cache session
+        AUTH-->>APP: User authenticated
+    end
+    
+    APP->>APP: Execute business logic
+    APP-->>B: Protected content
+    B-->>U: Display content
+
+    %% Logout Flow
+    Note over U,OAUTH: Logout Flow
+    U->>B: Click logout
+    B->>CDN: POST /api/auth/logout
+    CDN->>APP: Forward request
+    APP->>AUTH: Process logout
+    AUTH->>REDIS: Delete session
+    AUTH->>DB: Revoke refresh tokens
+    AUTH->>DB: Create audit log
+    AUTH-->>APP: Logout complete
+    APP-->>B: Clear cookies
+    B-->>U: Logged out
+
+    %% Password Reset Flow
+    Note over U,OAUTH: Password Reset Flow
+    U->>B: Request password reset
+    B->>CDN: POST /api/auth/forgot-password
+    CDN->>APP: Forward request
+    APP->>AUTH: Process reset request
+    AUTH->>DB: Find user by email
+    AUTH->>AUTH: Generate reset token
+    AUTH->>REDIS: Store token (15 min TTL)
+    AUTH->>EMAIL: Send reset email
+    EMAIL-->>U: Reset link
+    U->>B: Click reset link
+    B->>CDN: GET /api/auth/reset-password?token=xxx
+    CDN->>APP: Forward request
+    APP->>AUTH: Validate token
+    AUTH->>REDIS: Check token
+    REDIS-->>AUTH: Token valid
+    U->>B: Enter new password
+    B->>CDN: POST /api/auth/reset-password
+    CDN->>APP: Forward request
+    APP->>AUTH: Process reset
+    AUTH->>AUTH: Hash new password
+    AUTH->>DB: Update password
+    AUTH->>REDIS: Delete token
+    AUTH->>DB: Revoke all sessions
+    AUTH->>DB: Create audit log
+    AUTH-->>APP: Reset complete
+    APP-->>B: Redirect to login
+```

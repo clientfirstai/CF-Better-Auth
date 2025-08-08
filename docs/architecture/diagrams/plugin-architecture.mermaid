@@ -1,0 +1,298 @@
+```mermaid
+graph TB
+    subgraph "CF-Better-Auth Plugin Architecture"
+        subgraph "Core System"
+            CORE[CF-Better-Auth Core]
+            BA[Better-Auth Adapter]
+            PM[Plugin Manager]
+            EM[Event Manager]
+            HM[Hook Manager]
+        end
+
+        subgraph "Plugin Types"
+            subgraph "Authentication Plugins"
+                EP[Email/Password]
+                ML[Magic Link]
+                PK[Passkeys/WebAuthn]
+                OTP[Email/SMS OTP]
+                MFA[Multi-Factor Auth]
+                SOCIAL[Social OAuth]
+            end
+
+            subgraph "Organization Plugins"
+                ORG[Organizations]
+                TEAM[Teams]
+                RBAC[Role-Based Access]
+                PERM[Permissions]
+                INV[Invitations]
+            end
+
+            subgraph "Enhancement Plugins"
+                RATE[Rate Limiting]
+                AUDIT[Audit Logging]
+                SESS[Session Management]
+                ANON[Anonymous Users]
+                IMP[Impersonation]
+            end
+
+            subgraph "Integration Plugins"
+                STRIPE[Stripe Billing]
+                SLACK[Slack Notifications]
+                WEBHOOK[Webhooks]
+                ANALYTICS[Analytics]
+                MONITOR[Monitoring]
+            end
+        end
+
+        subgraph "Plugin Lifecycle"
+            INIT[Initialize]
+            REG[Register]
+            CONFIG[Configure]
+            LOAD[Load]
+            START[Start]
+            RUN[Running]
+            STOP[Stop]
+            UNREG[Unregister]
+        end
+
+        subgraph "Plugin Communication"
+            EVENTS[Event Bus]
+            HOOKS[Hook System]
+            API[Plugin API]
+            STORE[Plugin Store]
+            DEPS[Dependency Resolver]
+        end
+    end
+
+    %% Core connections
+    CORE --> BA
+    CORE --> PM
+    PM --> EM
+    PM --> HM
+
+    %% Plugin Manager controls lifecycle
+    PM --> INIT
+    INIT --> REG
+    REG --> CONFIG
+    CONFIG --> LOAD
+    LOAD --> START
+    START --> RUN
+    RUN --> STOP
+    STOP --> UNREG
+
+    %% Plugin types connect to Plugin Manager
+    EP --> PM
+    ML --> PM
+    PK --> PM
+    OTP --> PM
+    MFA --> PM
+    SOCIAL --> PM
+    ORG --> PM
+    TEAM --> PM
+    RBAC --> PM
+    PERM --> PM
+    INV --> PM
+    RATE --> PM
+    AUDIT --> PM
+    SESS --> PM
+    ANON --> PM
+    IMP --> PM
+    STRIPE --> PM
+    SLACK --> PM
+    WEBHOOK --> PM
+    ANALYTICS --> PM
+    MONITOR --> PM
+
+    %% Communication layer
+    PM --> EVENTS
+    PM --> HOOKS
+    PM --> API
+    PM --> STORE
+    PM --> DEPS
+
+    %% Event flow
+    EVENTS --> EM
+    HOOKS --> HM
+    EM --> CORE
+    HM --> CORE
+
+    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    classDef auth fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef org fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef enhance fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef integrate fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef lifecycle fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef comm fill:#fff8e1,stroke:#f57c00,stroke-width:2px
+
+    class CORE,BA,PM,EM,HM core
+    class EP,ML,PK,OTP,MFA,SOCIAL auth
+    class ORG,TEAM,RBAC,PERM,INV org
+    class RATE,AUDIT,SESS,ANON,IMP enhance
+    class STRIPE,SLACK,WEBHOOK,ANALYTICS,MONITOR integrate
+    class INIT,REG,CONFIG,LOAD,START,RUN,STOP,UNREG lifecycle
+    class EVENTS,HOOKS,API,STORE,DEPS comm
+```
+
+---
+
+## Plugin System Details
+
+### Plugin Structure
+
+```typescript
+interface CFAuthPlugin {
+  // Metadata
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author?: string;
+  
+  // Dependencies
+  requires?: string[];           // Required plugins
+  conflicts?: string[];          // Conflicting plugins
+  optional?: string[];           // Optional dependencies
+  
+  // Configuration
+  config?: PluginConfig;
+  schema?: ZodSchema;           // Config validation
+  
+  // Lifecycle hooks
+  onInit?: (context: PluginContext) => Promise<void>;
+  onStart?: (context: PluginContext) => Promise<void>;
+  onStop?: (context: PluginContext) => Promise<void>;
+  onDestroy?: (context: PluginContext) => Promise<void>;
+  
+  // Event handlers
+  events?: {
+    [eventName: string]: EventHandler;
+  };
+  
+  // Hook implementations
+  hooks?: {
+    beforeSignIn?: HookHandler;
+    afterSignIn?: HookHandler;
+    beforeSignUp?: HookHandler;
+    afterSignUp?: HookHandler;
+    beforeSession?: HookHandler;
+    afterSession?: HookHandler;
+    // ... more hooks
+  };
+  
+  // API extensions
+  api?: {
+    routes?: APIRoute[];
+    middleware?: Middleware[];
+    graphql?: GraphQLExtension;
+  };
+  
+  // Database extensions
+  database?: {
+    tables?: TableDefinition[];
+    migrations?: Migration[];
+    seeds?: Seed[];
+  };
+  
+  // UI components (optional)
+  ui?: {
+    components?: UIComponent[];
+    pages?: PageDefinition[];
+    styles?: StyleDefinition[];
+  };
+}
+```
+
+### Plugin Dependency Resolution
+
+```mermaid
+graph LR
+    subgraph "Dependency Graph"
+        MFA[MFA Plugin]
+        TOTP[TOTP Plugin]
+        SMS[SMS Plugin]
+        EMAIL[Email Plugin]
+        AUDIT[Audit Plugin]
+        CORE[Core Auth]
+        
+        MFA --> TOTP
+        MFA --> SMS
+        SMS --> EMAIL
+        TOTP --> CORE
+        SMS --> CORE
+        EMAIL --> CORE
+        AUDIT --> CORE
+        
+        MFA -.optional.-> AUDIT
+    end
+    
+    style MFA fill:#ffecb3
+    style AUDIT stroke-dasharray: 5 5
+```
+
+### Plugin Communication Patterns
+
+```mermaid
+sequenceDiagram
+    participant P1 as Plugin 1
+    participant EM as Event Manager
+    participant HM as Hook Manager
+    participant P2 as Plugin 2
+    participant CORE as Core System
+
+    Note over P1,CORE: Event-Based Communication
+    P1->>EM: emit('user.created', data)
+    EM->>P2: notify('user.created', data)
+    P2->>P2: Handle event
+    
+    Note over P1,CORE: Hook-Based Communication
+    CORE->>HM: trigger('beforeSignIn', context)
+    HM->>P1: execute hook handler
+    P1-->>HM: Modified context
+    HM->>P2: execute hook handler
+    P2-->>HM: Modified context
+    HM-->>CORE: Final context
+    
+    Note over P1,CORE: Direct API Communication
+    P1->>P2: getAPI().method(params)
+    P2-->>P1: Response
+```
+
+### Plugin Loading Order
+
+```mermaid
+graph TD
+    START[Start Loading]
+    SCAN[Scan Plugin Directory]
+    PARSE[Parse Plugin Manifests]
+    DEPS[Build Dependency Graph]
+    SORT[Topological Sort]
+    VALIDATE[Validate Dependencies]
+    
+    subgraph "Load Sequence"
+        L1[Load Core Plugins]
+        L2[Load Auth Plugins]
+        L3[Load Org Plugins]
+        L4[Load Enhancement Plugins]
+        L5[Load Integration Plugins]
+    end
+    
+    INIT[Initialize All]
+    CONFIG[Configure All]
+    START_ALL[Start All]
+    READY[System Ready]
+    
+    START --> SCAN
+    SCAN --> PARSE
+    PARSE --> DEPS
+    DEPS --> SORT
+    SORT --> VALIDATE
+    VALIDATE --> L1
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> L5
+    L5 --> INIT
+    INIT --> CONFIG
+    CONFIG --> START_ALL
+    START_ALL --> READY
+```

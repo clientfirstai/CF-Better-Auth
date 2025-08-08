@@ -1,0 +1,316 @@
+{
+  "$schema": "https://cf-auth.dev/schemas/config.json",
+  "app": {
+    "name": "CF-Better-Auth Example",
+    "version": "1.0.0",
+    "description": "Example CF-Better-Auth application",
+    "environment": "development",
+    "debug": true,
+    "timezone": "UTC",
+    "locale": "en",
+    "supportedLocales": ["en", "es", "fr"],
+    "server": {
+      "host": "localhost",
+      "port": 3000,
+      "baseUrl": "http://localhost:3000",
+      "trustProxy": false,
+      "keepAliveTimeout": 5000,
+      "headersTimeout": 60000,
+      "requestTimeout": 30000,
+      "maxRequestSize": "10mb",
+      "compression": {
+        "enabled": true,
+        "level": 6,
+        "threshold": "1kb"
+      },
+      "static": {
+        "enabled": true,
+        "path": "/static",
+        "directory": "./public",
+        "maxAge": "1d",
+        "etag": true
+      }
+    },
+    "cors": {
+      "enabled": true,
+      "origin": ["http://localhost:3001", "http://localhost:3000"],
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowedHeaders": [
+        "Origin",
+        "X-Requested-With",
+        "Content-Type",
+        "Accept",
+        "Authorization",
+        "Cache-Control"
+      ],
+      "credentials": true,
+      "maxAge": 86400
+    },
+    "rateLimit": {
+      "enabled": true,
+      "windowMs": 900000,
+      "max": 100,
+      "message": "Too many requests, please try again later",
+      "statusCode": 429,
+      "headers": true
+    },
+    "healthCheck": {
+      "enabled": true,
+      "path": "/health",
+      "detailedPath": "/health/detailed",
+      "includeSystem": false,
+      "includeDatabase": true,
+      "timeout": 5000
+    },
+    "metrics": {
+      "enabled": false,
+      "path": "/metrics",
+      "format": "prometheus",
+      "includeDefaults": true,
+      "includeHttp": true,
+      "includeAuth": true
+    },
+    "features": {
+      "registration": true,
+      "socialAuth": true,
+      "mfa": false,
+      "organizations": false
+    },
+    "urls": {
+      "frontend": "http://localhost:3001",
+      "api": "http://localhost:3000/api",
+      "docs": "http://localhost:3000/docs"
+    },
+    "development": {
+      "hotReload": true,
+      "sourceMaps": true,
+      "prettyJson": true,
+      "includeStackTrace": true,
+      "mockExternal": false
+    }
+  },
+  "database": {
+    "provider": "postgresql",
+    "url": "${DATABASE_URL}",
+    "host": "${DB_HOST:localhost}",
+    "port": "${DB_PORT:5432}",
+    "name": "${DB_NAME:cf_auth_dev}",
+    "user": "${DB_USER:postgres}",
+    "password": "${DB_PASSWORD}",
+    "ssl": {
+      "enabled": false,
+      "rejectUnauthorized": true,
+      "ca": null,
+      "cert": null,
+      "key": null
+    },
+    "pool": {
+      "min": 2,
+      "max": 10,
+      "idleTimeoutMillis": 30000,
+      "acquireTimeoutMillis": 60000
+    },
+    "migrations": {
+      "enabled": true,
+      "directory": "./migrations",
+      "tableName": "migrations",
+      "autoRun": false
+    },
+    "logging": {
+      "enabled": true,
+      "level": "info",
+      "slow": {
+        "enabled": true,
+        "threshold": 1000
+      }
+    }
+  },
+  "auth": {
+    "session": {
+      "duration": 86400000,
+      "secret": "${SESSION_SECRET}",
+      "name": "cf-auth-session",
+      "secure": false,
+      "httpOnly": true,
+      "sameSite": "lax",
+      "rolling": false
+    },
+    "jwt": {
+      "secret": "${JWT_SECRET}",
+      "algorithm": "HS256",
+      "expiresIn": "1h",
+      "issuer": "cf-auth",
+      "audience": "cf-auth-app"
+    },
+    "password": {
+      "minLength": 8,
+      "maxLength": 128,
+      "requireUppercase": true,
+      "requireLowercase": true,
+      "requireNumbers": true,
+      "requireSymbols": false,
+      "preventReuse": 5,
+      "hashRounds": 12
+    },
+    "social": {
+      "google": {
+        "enabled": true,
+        "clientId": "${GOOGLE_CLIENT_ID}",
+        "clientSecret": "${GOOGLE_CLIENT_SECRET}",
+        "scope": ["profile", "email"],
+        "redirectUri": "http://localhost:3000/auth/google/callback"
+      },
+      "github": {
+        "enabled": true,
+        "clientId": "${GITHUB_CLIENT_ID}",
+        "clientSecret": "${GITHUB_CLIENT_SECRET}",
+        "scope": ["user:email"],
+        "redirectUri": "http://localhost:3000/auth/github/callback"
+      }
+    },
+    "mfa": {
+      "enabled": false,
+      "required": false,
+      "totp": {
+        "enabled": true,
+        "issuer": "CF-Better-Auth",
+        "window": 1,
+        "step": 30
+      },
+      "webauthn": {
+        "enabled": false,
+        "rpName": "CF-Better-Auth",
+        "rpId": "localhost",
+        "requireResidentKey": false,
+        "userVerification": "preferred"
+      }
+    },
+    "verification": {
+      "email": {
+        "enabled": true,
+        "required": true,
+        "expiresIn": 3600000,
+        "from": "${EMAIL_FROM}"
+      },
+      "phone": {
+        "enabled": false,
+        "required": false,
+        "expiresIn": 600000
+      }
+    }
+  },
+  "email": {
+    "provider": "smtp",
+    "from": "${EMAIL_FROM}",
+    "replyTo": "${EMAIL_REPLY_TO}",
+    "smtp": {
+      "host": "${SMTP_HOST:localhost}",
+      "port": "${SMTP_PORT:587}",
+      "secure": false,
+      "auth": {
+        "user": "${SMTP_USER}",
+        "pass": "${SMTP_PASSWORD}"
+      },
+      "tls": {
+        "rejectUnauthorized": false
+      }
+    },
+    "templates": {
+      "welcome": {
+        "subject": "Welcome to ${app.name}",
+        "template": "welcome.html"
+      },
+      "verification": {
+        "subject": "Verify your email",
+        "template": "verification.html"
+      },
+      "passwordReset": {
+        "subject": "Reset your password",
+        "template": "password-reset.html"
+      }
+    },
+    "options": {
+      "sandbox": true,
+      "testMode": true
+    }
+  },
+  "logging": {
+    "level": "debug",
+    "format": "pretty",
+    "outputs": [
+      {
+        "type": "console",
+        "enabled": true,
+        "level": "debug",
+        "colorize": true
+      },
+      {
+        "type": "file",
+        "enabled": false,
+        "level": "info",
+        "filename": "./logs/app.log",
+        "maxSize": "10MB",
+        "maxFiles": 5,
+        "compress": true
+      }
+    ],
+    "filters": [
+      {
+        "namespace": "cf-auth:*",
+        "level": "debug"
+      },
+      {
+        "namespace": "sql",
+        "level": "warn"
+      }
+    ],
+    "metadata": {
+      "service": "cf-auth",
+      "version": "${app.version}",
+      "environment": "${app.environment}"
+    }
+  },
+  "security": {
+    "secret": "${SECRET_KEY}",
+    "encryption": {
+      "algorithm": "aes-256-gcm",
+      "key": "${ENCRYPTION_KEY}",
+      "iv": null
+    },
+    "csrf": {
+      "enabled": true,
+      "secret": "${CSRF_SECRET}",
+      "cookie": {
+        "name": "_csrf",
+        "httpOnly": true,
+        "secure": false,
+        "sameSite": "strict"
+      }
+    },
+    "headers": {
+      "hsts": {
+        "enabled": false,
+        "maxAge": 31536000,
+        "includeSubDomains": true,
+        "preload": false
+      },
+      "contentSecurityPolicy": {
+        "enabled": false,
+        "directives": {
+          "defaultSrc": ["'self'"],
+          "scriptSrc": ["'self'", "'unsafe-inline'"],
+          "styleSrc": ["'self'", "'unsafe-inline'"],
+          "imgSrc": ["'self'", "data:", "https:"]
+        }
+      },
+      "frameOptions": "DENY",
+      "contentTypeOptions": true,
+      "referrerPolicy": "strict-origin-when-cross-origin"
+    }
+  },
+  "plugins": {
+    "enabled": [],
+    "disabled": [],
+    "config": {}
+  }
+}

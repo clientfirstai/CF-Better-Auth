@@ -1,0 +1,91 @@
+{
+  "name": "@cf-auth/types",
+  "version": "0.1.0",
+  "description": "Shared TypeScript type definitions for the CF-Better-Auth ecosystem",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./auth": {
+      "import": "./dist/auth.mjs",
+      "require": "./dist/auth.js",
+      "types": "./dist/auth.d.ts"
+    },
+    "./database": {
+      "import": "./dist/database.mjs",
+      "require": "./dist/database.js",
+      "types": "./dist/database.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api.mjs",
+      "require": "./dist/api.js",
+      "types": "./dist/api.d.ts"
+    },
+    "./plugins": {
+      "import": "./dist/plugins.mjs",
+      "require": "./dist/plugins.js",
+      "types": "./dist/plugins.d.ts"
+    },
+    "./config": {
+      "import": "./dist/config.mjs",
+      "require": "./dist/config.js",
+      "types": "./dist/config.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors.mjs",
+      "require": "./dist/errors.js",
+      "types": "./dist/errors.d.ts"
+    },
+    "./events": {
+      "import": "./dist/events.mjs",
+      "require": "./dist/events.js",
+      "types": "./dist/events.d.ts"
+    },
+    "./common": {
+      "import": "./dist/common.mjs",
+      "require": "./dist/common.js",
+      "types": "./dist/common.d.ts"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "auth",
+    "authentication",
+    "better-auth",
+    "cloudflare",
+    "typescript",
+    "types"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cf-auth/cf-better-auth",
+    "directory": "packages/@cf-auth/types"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "better-auth": ">=0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

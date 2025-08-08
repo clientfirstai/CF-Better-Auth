@@ -15,7 +15,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json}\""
   },
   "dependencies": {
-    "better-auth": "^1.0.0",
+    "@cf-auth/core": "workspace:*",
+    "better-auth": "file:../vendor/better-auth",
     "drizzle-orm": "^0.29.0",
     "pg": "^8.11.3",
     "@types/pg": "^8.10.7",

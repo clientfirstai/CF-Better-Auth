@@ -1,11 +1,25 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
-  format: ['cjs', 'esm'],
+  entry: [
+    'src/index.ts',
+    'src/plugins/**/*.ts',
+  ],
+  format: ['esm', 'cjs'],
   dts: true,
-  splitting: false,
-  sourcemap: true,
   clean: true,
-  external: ['better-auth', '@cf-auth/core', '@cf-auth/types', '@cf-auth/utils']
+  sourcemap: true,
+  minify: false,
+  target: 'node18',
+  outDir: 'dist',
+  splitting: false,
+  external: [
+    '@cf-auth/core',
+    '@cf-auth/types',
+    '@cf-auth/utils',
+    'better-auth'
+  ],
+  banner: {
+    js: '"use client";',
+  },
 });

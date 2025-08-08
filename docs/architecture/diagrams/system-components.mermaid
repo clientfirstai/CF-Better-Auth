@@ -1,0 +1,120 @@
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        WEB[Web Browser]
+        MOBILE[Mobile App]
+        API_CLIENT[API Client]
+    end
+
+    subgraph "Edge Layer"
+        CDN[CDN/CloudFlare]
+        WAF[Web Application Firewall]
+    end
+
+    subgraph "Gateway Layer"
+        LB[Load Balancer<br/>NGINX/ALB]
+        AG[API Gateway]
+    end
+
+    subgraph "Application Layer"
+        subgraph "NextJS Instances"
+            APP1[NextJS App 1<br/>+ CF-Better-Auth]
+            APP2[NextJS App 2<br/>+ CF-Better-Auth]
+            APP3[NextJS App 3<br/>+ CF-Better-Auth]
+        end
+        
+        subgraph "CF-Better-Auth Core"
+            AUTH[Authentication Engine]
+            PLUGIN[Plugin System]
+            ADAPTER[Better-Auth Adapter]
+        end
+    end
+
+    subgraph "Service Layer"
+        EMAIL[Email Service<br/>SendGrid/SES]
+        SMS[SMS Service<br/>Twilio/SNS]
+        OAUTH[OAuth Providers<br/>Google/GitHub/etc]
+        WEBHOOK[Webhook Service]
+    end
+
+    subgraph "Data Layer"
+        subgraph "Primary Storage"
+            PG[(PostgreSQL<br/>Primary DB)]
+            PG_R[(PostgreSQL<br/>Read Replica)]
+        end
+        
+        subgraph "Cache Layer"
+            REDIS[(Redis Cluster<br/>Session/Cache)]
+        end
+        
+        subgraph "Object Storage"
+            S3[(S3/R2<br/>Files/Assets)]
+        end
+    end
+
+    subgraph "Monitoring & Observability"
+        METRICS[Metrics<br/>Prometheus]
+        LOGS[Logs<br/>ELK Stack]
+        TRACE[Tracing<br/>Jaeger]
+        ALERT[Alerting<br/>PagerDuty]
+    end
+
+    %% Client connections
+    WEB --> CDN
+    MOBILE --> CDN
+    API_CLIENT --> CDN
+    
+    %% Edge to Gateway
+    CDN --> WAF
+    WAF --> LB
+    LB --> AG
+    
+    %% Gateway to Apps
+    AG --> APP1
+    AG --> APP2
+    AG --> APP3
+    
+    %% App internal connections
+    APP1 --> AUTH
+    APP2 --> AUTH
+    APP3 --> AUTH
+    AUTH --> PLUGIN
+    AUTH --> ADAPTER
+    
+    %% Service connections
+    AUTH --> EMAIL
+    AUTH --> SMS
+    AUTH --> OAUTH
+    AUTH --> WEBHOOK
+    
+    %% Data connections
+    AUTH --> PG
+    AUTH --> PG_R
+    AUTH --> REDIS
+    AUTH --> S3
+    
+    %% Monitoring connections
+    APP1 -.-> METRICS
+    APP2 -.-> METRICS
+    APP3 -.-> METRICS
+    AUTH -.-> LOGS
+    AUTH -.-> TRACE
+    METRICS --> ALERT
+    LOGS --> ALERT
+
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef edge fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef gateway fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef app fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef service fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef data fill:#ede7f6,stroke:#311b92,stroke-width:2px
+    classDef monitor fill:#e0f2f1,stroke:#004d40,stroke-width:2px
+
+    class WEB,MOBILE,API_CLIENT client
+    class CDN,WAF edge
+    class LB,AG gateway
+    class APP1,APP2,APP3,AUTH,PLUGIN,ADAPTER app
+    class EMAIL,SMS,OAUTH,WEBHOOK service
+    class PG,PG_R,REDIS,S3 data
+    class METRICS,LOGS,TRACE,ALERT monitor
+```

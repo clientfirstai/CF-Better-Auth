@@ -1,43 +1,33 @@
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { LoginForm } from '@/components/auth/login-form'
 
 export const metadata: Metadata = {
-  title: 'Sign In',
-  description: 'Sign in to your account'
+  title: 'Sign In | CF Better Auth',
+  description: 'Sign in to your account with email, magic link, SMS, or social authentication'
 }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome back</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
           <p className="text-muted-foreground mt-2">
             Sign in to your account to continue
           </p>
         </div>
 
         <Suspense fallback={<LoadingSpinner />}>
-          <div className="space-y-6">
-            {/* Login form would go here */}
-            <div className="p-8 border rounded-lg bg-card">
-              <p className="text-center text-muted-foreground">
-                Login form implementation pending
-              </p>
-            </div>
-
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link href="/signup" className="text-primary hover:underline">
-                  Sign up
-                </Link>
-              </p>
-            </div>
-          </div>
+          <LoginForm
+            className="bg-card border rounded-lg p-6 shadow-sm"
+            enableSocialAuth={true}
+            socialProviders={['google', 'github', 'discord']}
+            enableMagicLink={true}
+            enableOTP={true}
+            defaultMethod="email-password"
+          />
         </Suspense>
       </div>
     </div>
